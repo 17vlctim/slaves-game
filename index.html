@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Рабство в TG</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #17212b; color: white; padding: 15px; margin: 0; }
+        .stats { display: flex; justify-content: space-between; background: #242f3d; padding: 15px; border-radius: 10px; margin-bottom: 15px; font-size: 18px; font-weight: bold; }
+        .gold { color: #f1c40f; }
+        .energy { color: #2ecc71; }
+        button { padding: 12px; border-radius: 8px; border: none; background: #2481cc; color: white; font-size: 14px; cursor: pointer; width: 100%; margin-bottom: 10px;}
+        button:active { background: #1e6da8; }
+        button:disabled { background: #555; color: #aaa; }
+        .btn-boost { background: #9b59b6; }
+        .btn-work { background: #e67e22; }
+        .member { background: #242f3d; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .member-name { font-weight: bold; font-size: 16px; }
+        .member-status { font-size: 12px; color: #aaa; }
+    </style>
+</head>
+<body>
+
+    <div class="stats">
+        <span class="gold">💰 <span id="my-gold">0</span></span>
+        <span class="energy">⚡ <span id="my-energy">0</span>/100</span>
+    </div>
+
+    <button class="btn-work" onclick="doWork()">🔨 Работать (-10⚡, +50💰)</button>
+    <button class="btn-boost" onclick="doBoost()">🧪 Бустер (+50⚡, -500💰)</button>
+
+    <h4>Участники чата:</h4>
+    <div id="members-list">Загрузка...</div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // Получаем данные юзера
+        const user = tg.initDataUnsafe?.user;
+        const userId = user ? user.id : null;
+        const userName = user ? user.first_name : "Гость";
+
+        // Получаем ID чата из ссылки (передается ботом)
+        const urlParams = new URLSearchParams(window.location.search);
+        const chatId = urlParams.get('chat_id');
+
+        if (!userId || !chatId) {
+            document.body.innerHTML = "<h3>Ошибка: Открой игру через кнопку в чате!</h3>";
+        } else {
+            loadState();
+        }
+
+        // Загрузка данных
+        async function loadState() {
+            const res = await fetch(`/api/state?user_id=${userId}&chat_id=${chatId}&name=${encodeURIComponent(userName)}`);
+            const data = await res.json();
+
+            document.getElementById('my-gold').innerText = data.my_gold;
+            document.getElementById('my-energy').innerText = data.my_energy;
+
+            const list = document.getElementById('members-list');
+            list.innerHTML = '';
+
+            data.members.forEach(m => {
+                const div = document.createElement('div');
+                div.className = 'member';
+                
+                let statusHtml = '';
+                if (m.is_me) {
+                    statusHtml = `<span class="member-status">Это ты</span>`;
+                } else if (m.owner_id === String(userId)) {
+                    statusHtml = `<span class="member-status" style="color:#e74c3c">⛓️ Твой раб</span>`;
+                } else if (m.owner_id) {
+                    statusHtml = `<span class="member-status">Занят</span>`;
+                } else {
+                    statusHtml = `<button style="width:auto; padding:8px; margin:0;" onclick="buyUser('${m.id}')">Купить за 1000💰</button>`;
+                }
+
+                div.innerHTML = `<div><div class="member-name">${m.name}</div></div> ${statusHtml}`;
+                list.appendChild(div);
+            });
+        }
+
+        // Работать
+        async function doWork() {
+            const res = await fetch('/api/work', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                tg.HapticFeedback.notificationOccurred('success');
+                loadState(); // Обновляем экран
+            } else {
+                alert(data.error);
+            }
+        }
+
+        // Бустер
+        async function doBoost() {
+            const res = await fetch('/api/boost', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId })
+            });
+            const data = await res.json();
+            if (data.success) loadState();
+            else alert(data.error);
+        }
+
+        // Купить
+        async function buyUser(targetId) {
+            const res = await fetch('/api/buy', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, target_id: targetId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                tg.HapticFeedback.notificationOccurred('success');
+                loadState();
+            } else {
+                alert(data.error);
+            }
+        }
+    </script>
+</body>
+</html>
