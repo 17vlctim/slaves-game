@@ -7,7 +7,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = "9035696213:AAELU7MTMAtHquOr18HR0zsrvBzu_2FxOnE"
-WEB_URL = "https://ripe-mails-marry.loca.lt" # БЕЗ слэша на конце!
+WEB_URL = "https://slaves-game.onrender.com" # БЕЗ слэша на конце!
 PORT = 8080
 
 bot = Bot(token=BOT_TOKEN)
