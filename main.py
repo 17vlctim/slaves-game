@@ -2,12 +2,12 @@ import asyncio
 import time
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.filters import Command, CommandObject
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = "9035696213:AAELU7MTMAtHquOr18HR0zsrvBzu_2FxOnE"
-WEB_URL = "https://slaves-game.onrender.com" # БЕЗ слэша на конце!
+WEB_URL = "https://slaves-game.onrender.com" 
 PORT = 8080
 
 bot = Bot(token=BOT_TOKEN)
@@ -18,20 +18,37 @@ chat_members = {}
 
 # --- ЛОГИКА БОТА ---
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message):
-    chat_id = message.chat.id
-    # Ссылка на приложение с ID чата
-    app_url = f"{WEB_URL}/app?chat_id={chat_id}"
-    
-    # ИСПОЛЬЗУЕМ url ВМЕСТО web_app (работает в группах)
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎮 Открыть игру", url=app_url)]
-    ])
-    
-    await message.answer(
-        "Добро пожаловать в игру! Нажми кнопку ниже, чтобы начать выкупать участников этого чата.", 
-        reply_markup=kb
-    )
+async def cmd_start(message: types.Message, command: CommandObject):
+    # Если это личка с ботом
+    if message.chat.type == 'private':
+        # Проверяем, есть ли параметр (chat_id) в ссылке перехода
+        if command.args:
+            chat_id = command.args
+            app_url = f"{WEB_URL}/app?chat_id={chat_id}"
+            
+            # Здесь используем web_app (работает только в личке)
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🎮 Открыть игру", web_app=WebAppInfo(url=app_url))]
+            ])
+            await message.answer("Нажми кнопку ниже, чтобы начать игру в этом чате:", reply_markup=kb)
+        else:
+            await message.answer("Привет! Чтобы начать играть, добавь меня в группу и напиши там /start.")
+            
+    # Если это групповой чат
+    else:
+        chat_id = message.chat.id
+        bot_info = await bot.get_me()
+        # Создаем ссылку на бота с параметром chat_id
+        deep_link = f"https://t.me/{bot_info.username}?start={chat_id}"
+        
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🚀 Перейти в ЛС и играть", url=deep_link)]
+        ])
+        
+        await message.answer(
+            "Чтобы открыть полноценное Мини-приложение, перейди по кнопке ниже в мои личные сообщения и нажми там Start.", 
+            reply_markup=kb
+        )
 
 # --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 def get_user(user_id, name="Игрок"):
@@ -154,7 +171,6 @@ async def main():
     
     print(f"✅ Сервер запущен на порту {PORT}")
     print(f"✅ Ссылка: {WEB_URL}")
-    print("❗ Убедись, что CloudPub направлен на порт 8080!")
     
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
