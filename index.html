@@ -38,14 +38,16 @@
         tg.ready();
         tg.expand();
 
-        // Получаем данные юзера
-        const user = tg.initDataUnsafe?.user;
-        const userId = user ? user.id : null;
-        const userName = user ? user.first_name : "Гость";
-
-        // Получаем ID чата из ссылки (передается ботом)
+        // Получаем параметры из ссылки (chat_id и user_id)
         const urlParams = new URLSearchParams(window.location.search);
         const chatId = urlParams.get('chat_id');
+        
+        // Пытаемся взять данные из Telegram (если это Mini App)
+        const tgUser = tg.initDataUnsafe?.user;
+        
+        // Если Telegram не дал данные, берем их из ссылки (для теста в браузере)
+        const userId = tgUser ? tgUser.id : urlParams.get('user_id');
+        const userName = tgUser ? tgUser.first_name : (urlParams.get('name') || "Игрок");
 
         if (!userId || !chatId) {
             document.body.innerHTML = "<h3>Ошибка: Открой игру через кнопку в чате!</h3>";
@@ -92,7 +94,7 @@
             });
             const data = await res.json();
             if (data.success) {
-                tg.HapticFeedback.notificationOccurred('success');
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                 loadState(); // Обновляем экран
             } else {
                 alert(data.error);
@@ -118,7 +120,7 @@
             });
             const data = await res.json();
             if (data.success) {
-                tg.HapticFeedback.notificationOccurred('success');
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                 loadState();
             } else {
                 alert(data.error);
