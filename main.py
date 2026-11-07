@@ -15,7 +15,6 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 # --- БАЗА ДАННЫХ (В ПАМЯТИ) ---
-# Формат: users = { "user_id": {"name": "Имя", "gold": 1000, "energy": 100, "last_energy_update": time, "owner_id": None} }
 users = {}
 
 # --- ЛОГИКА БОТА ---
@@ -23,24 +22,13 @@ users = {}
 async def cmd_start(message: types.Message):
     user_id = str(message.from_user.id)
     
-    # Регистрируем игрока, если его нет
-    if user_id not in users:
-        users[user_id] = {
-            "name": message.from_user.first_name,
-            "gold": 1000,
-            "energy": 100,
-            "last_energy_update": time.time(),
-            "owner_id": None
-        }
-
-    # Ссылка на Mini App. Мы не передаем chat_id, так как игра теперь глобальная.
-    app_url = f"{WEB_URL}/app"
+    # Ссылка теперь содержит ID и имя, чтобы сервер знал, кто зашел
+    app_url = f"{WEB_URL}/app?user_id={user_id}&name={message.from_user.first_name}"
     
-    # ВАЖНО: web_app работает ТОЛЬКО в личных сообщениях.
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🎮 Открыть игру", web_app=WebAppInfo(url=app_url))]
     ])
-    await message.answer("Добро пожаловать в глобальную экономическую игру! Нажми кнопку, чтобы начать.", reply_markup=kb)
+    await message.answer("Добро пожаловать! Нажми кнопку, чтобы начать.", reply_markup=kb)
 
 # --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 def update_energy(user):
@@ -51,20 +39,30 @@ def update_energy(user):
         user["energy"] = min(100, user["energy"] + regen)
         user["last_energy_update"] = now
 
-# --- ЛОГИКА ВЕБ-СЕРВЕРА (API) ---
+# --- API ---
 async def handle_index(request):
     return web.FileResponse('index.html')
 
-# Получить состояние игры (баланс, рынок, империю)
 async def handle_state(request):
     user_id = request.query.get("user_id")
-    if not user_id or user_id not in users:
-        return web.json_response({"error": "Игрок не найден"}, status=404)
+    user_name = request.query.get("name", "Игрок")
+    
+    if not user_id: 
+        return web.json_response({"error": "No ID"}, status=400)
+
+    # АВТО-РЕГИСТРАЦИЯ: Если сервер перезапустился и память пуста, создаем игрока
+    if user_id not in users:
+        users[user_id] = {
+            "name": user_name,
+            "gold": 1000,
+            "energy": 100,
+            "last_energy_update": time.time(),
+            "owner_id": None
+        }
 
     me = users[user_id]
     update_energy(me)
 
-    # Собираем рынок (все игроки, кроме меня)
     market = []
     for uid, u in users.items():
         if uid != user_id:
@@ -72,16 +70,14 @@ async def handle_state(request):
                 "id": uid,
                 "name": u["name"],
                 "owner_id": u["owner_id"],
-                "price": 1000 + (len(u["name"]) * 10) # Простая формула цены
+                "price": 1000 + (len(u["name"]) * 10)
             })
 
-    # Собираем мою империю (кого я купил)
     my_slaves = []
     for uid, u in users.items():
         if u["owner_id"] == user_id:
             my_slaves.append({"id": uid, "name": u["name"]})
 
-    # Узнаем, кто мой владелец
     my_owner = None
     if me["owner_id"] and me["owner_id"] in users:
         my_owner = users[me["owner_id"]]["name"]
@@ -94,23 +90,19 @@ async def handle_state(request):
         "my_owner": my_owner
     })
 
-# Работать
 async def handle_work(request):
     data = await request.json()
     user_id = str(data.get("user_id"))
     me = users.get(user_id)
-    
     if me:
         update_energy(me)
         if me["energy"] >= 10:
             me["energy"] -= 10
             me["gold"] += 50
             return web.json_response({"success": True})
-        else:
-            return web.json_response({"success": False, "error": "Мало энергии!"})
-    return web.json_response({"success": False, "error": "Игрок не найден"})
+        return web.json_response({"success": False, "error": "Мало энергии!"})
+    return web.json_response({"success": False, "error": "Нет игрока"})
 
-# Купить игрока
 async def handle_buy(request):
     data = await request.json()
     buyer_id = str(data.get("user_id"))
@@ -119,46 +111,32 @@ async def handle_buy(request):
     buyer = users.get(buyer_id)
     target = users.get(target_id)
 
-    if not buyer or not target:
-        return web.json_response({"success": False, "error": "Ошибка игрока"})
-
+    if not buyer or not target: return web.json_response({"success": False, "error": "Ошибка"})
+    
     price = 1000 + (len(target["name"]) * 10)
 
-    if buyer["gold"] < price:
-        return web.json_response({"success": False, "error": "Не хватает золота!"})
-    if target["owner_id"] is not None:
-        return web.json_response({"success": False, "error": "Игрок уже куплен!"})
-    if target_id == buyer_id:
-         return web.json_response({"success": False, "error": "Нельзя купить себя!"})
+    if buyer["gold"] < price: return web.json_response({"success": False, "error": "Не хватает золота!"})
+    if target["owner_id"]: return web.json_response({"success": False, "error": "Уже куплен!"})
+    if target_id == buyer_id: return web.json_response({"success": False, "error": "Нельзя себя!"})
 
     buyer["gold"] -= price
     target["owner_id"] = buyer_id
-
     return web.json_response({"success": True})
 
-# Выкупить себя
 async def handle_redeem(request):
     data = await request.json()
     user_id = str(data.get("user_id"))
     me = users.get(user_id)
-    
-    if not me:
-        return web.json_response({"success": False, "error": "Ошибка"})
-        
-    if not me["owner_id"]:
-        return web.json_response({"success": False, "error": "Вы и так свободны!"})
+    if not me: return web.json_response({"success": False, "error": "Ошибка"})
+    if not me["owner_id"]: return web.json_response({"success": False, "error": "Вы свободны!"})
 
     price = 1000 + (len(me["name"]) * 10)
-    
-    if me["gold"] < price:
-        return web.json_response({"success": False, "error": f"Нужно {price} монет для выкупа!"})
+    if me["gold"] < price: return web.json_response({"success": False, "error": f"Нужно {price}💰"})
         
     me["gold"] -= price
     me["owner_id"] = None
     return web.json_response({"success": True})
 
-
-# --- ЗАПУСК ---
 async def main():
     app = web.Application()
     app.router.add_get('/', handle_index)
