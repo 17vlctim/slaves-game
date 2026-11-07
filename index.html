@@ -59,13 +59,19 @@
         const tg = window.Telegram.WebApp;
         tg.ready(); tg.expand();
         
-        const user = tg.initDataUnsafe?.user;
-        const userId = user ? user.id : null;
+                // Получаем параметры из ссылки (ID и имя, которые передал бот)
+        const urlParams = new URLSearchParams(window.location.search);
+        const tgUser = tg.initDataUnsafe?.user;
+        
+        // Берем ID из Telegram, а если его нет — из ссылки
+        const userId = tgUser ? tgUser.id : urlParams.get('user_id');
+        const userName = tgUser ? tgUser.first_name : (urlParams.get('name') || "Игрок");
 
         if (!userId) {
-            document.body.innerHTML = "<h3 style='padding:20px;'>Ошибка: Открой игру через бота!</h3>";
+            document.body.innerHTML = "<h3 style='padding:20px;'>Ошибка: Открой игру через кнопку в боте!</h3>";
         } else {
-            loadState();
+            // Передаем имя в функцию загрузки
+            loadState(userName);
         }
 
         function switchTab(tab) {
