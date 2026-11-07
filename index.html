@@ -23,6 +23,9 @@
         .btn-green { background: #2ecc71; color: #000; }
         .btn-red { background: #e74c3c; }
         .btn-orange { background: #e67e22; }
+        .btn-admin { background: #9b59b6; width: 100%; margin-top: 15px; }
+        
+        .admin-panel { display: none; margin-top: 20px; padding: 15px; border: 2px dashed #9b59b6; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -40,6 +43,12 @@
             <button class="btn btn-orange" style="width:100%; margin-bottom: 15px; padding: 15px;" onclick="doWork()">🔨 Поработать (-10⚡, +50💰)</button>
             <h3>Глобальный рынок:</h3>
             <div id="market-list">Загрузка...</div>
+
+            <!-- Админ Панель -->
+            <div id="admin-panel" class="admin-panel">
+                <h4 style="margin-top:0; color:#9b59b6;">Панель Владельца</h4>
+                <button class="btn btn-admin" onclick="cheatMoney()">💸 Накинуть 10 000 монет</button>
+            </div>
         </div>
 
         <!-- Вкладка Империя -->
@@ -57,14 +66,10 @@
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.ready(); 
-        tg.expand();
+        tg.ready(); tg.expand();
         
-        // Получаем параметры из ссылки (ID и имя)
         const urlParams = new URLSearchParams(window.location.search);
         const tgUser = tg.initDataUnsafe?.user;
-        
-        // Берем ID из Telegram, а если его нет (или браузер) — из ссылки
         const userId = tgUser ? tgUser.id : urlParams.get('user_id');
         const userName = tgUser ? tgUser.first_name : (urlParams.get('name') || "Игрок");
 
@@ -89,12 +94,15 @@
                 document.getElementById('my-gold').innerText = data.gold;
                 document.getElementById('my-energy').innerText = data.energy;
 
-                // Рендер рынка
+                // Админка
+                if (data.is_admin) {
+                    document.getElementById('admin-panel').style.display = 'block';
+                }
+
+                // Рынок
                 const marketList = document.getElementById('market-list');
                 marketList.innerHTML = '';
-                if(data.market.length === 0) {
-                    marketList.innerHTML = "<p style='color:#aaa;'>Пока никого нет. Позови девушку!</p>";
-                }
+                if(data.market.length === 0) marketList.innerHTML = "<p style='color:#aaa;'>Пока никого нет.</p>";
                 
                 data.market.forEach(p => {
                     const div = document.createElement('div');
@@ -104,14 +112,16 @@
                     if (p.owner_id) {
                         btnHtml = `<span style="color:#e74c3c; font-size: 12px; font-weight:bold;">Занят</span>`;
                     } else {
+                        let npcTag = p.is_npc ? "🤖" : "👤";
                         btnHtml = `<button class="btn btn-green" onclick="buyPlayer('${p.id}')">Купить<br>${p.price}💰</button>`;
                     }
                     
-                    div.innerHTML = `<div style="font-size:16px;"><b>${p.name}</b></div> ${btnHtml}`;
+                    let nameStr = p.is_npc ? `🤖 ${p.name}` : p.name;
+                    div.innerHTML = `<div style="font-size:16px;"><b>${nameStr}</b></div> ${btnHtml}`;
                     marketList.appendChild(div);
                 });
 
-                // Рендер империи
+                // Империя
                 const slavesList = document.getElementById('slaves-list');
                 slavesList.innerHTML = '';
                 if (data.my_slaves.length === 0) {
@@ -120,12 +130,13 @@
                     data.my_slaves.forEach(s => {
                         const div = document.createElement('div');
                         div.className = 'card';
-                        div.innerHTML = `<div style="font-size:16px;"><b>${s.name}</b></div> <span style="color:#2ecc71; font-size:12px;">Твой раб</span>`;
+                        let nameStr = s.is_npc ? `🤖 ${s.name}` : s.name;
+                        div.innerHTML = `<div style="font-size:16px;"><b>${nameStr}</b></div> <span style="color:#2ecc71; font-size:12px;">+${s.income}💰/час</span>`;
                         slavesList.appendChild(div);
                     });
                 }
 
-                // Инфа о владельце
+                // Владелец
                 const ownerInfo = document.getElementById('owner-info');
                 if (data.my_owner) {
                     ownerInfo.innerHTML = `
@@ -136,44 +147,37 @@
                 } else {
                     ownerInfo.innerHTML = `<div class="card" style="border: 1px solid #2ecc71; justify-content:center;"><b>Ты свободен!</b></div>`;
                 }
-            } catch (e) {
-                console.error("Ошибка загрузки:", e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         async function doWork() {
             const res = await fetch('/api/work', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
             const data = await res.json();
-            if (data.success) { 
-                if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light'); 
-                loadState(userName); 
-            } else {
-                alert(data.error);
-            }
+            if (data.success) { if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light'); loadState(userName); } 
+            else alert(data.error);
         }
 
         async function buyPlayer(targetId) {
-            if(!confirm("Точно купить этого игрока?")) return;
+            if(!confirm("Точно купить?")) return;
             const res = await fetch('/api/buy', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, target_id: targetId }) });
             const data = await res.json();
-            if (data.success) { 
-                if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
-                loadState(userName); 
-            } else {
-                alert(data.error);
-            }
+            if (data.success) { if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); loadState(userName); } 
+            else alert(data.error);
         }
 
         async function redeemSelf() {
             if(!confirm("Выкупить себя из рабства?")) return;
             const res = await fetch('/api/redeem', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
             const data = await res.json();
-            if (data.success) { 
-                if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
-                loadState(userName); 
-            } else {
-                alert(data.error);
-            }
+            if (data.success) { if(tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); loadState(userName); } 
+            else alert(data.error);
+        }
+
+        // АДМИНСКАЯ ФУНКЦИЯ
+        async function cheatMoney() {
+            const res = await fetch('/api/admin_cheat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, amount: 10000 }) });
+            const data = await res.json();
+            if (data.success) { loadState(userName); } else { alert(data.error); }
         }
     </script>
 </body>
