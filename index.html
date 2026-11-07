@@ -81,8 +81,8 @@
             event.target.classList.add('active');
         }
 
-        async function loadState() {
-            const res = await fetch(`/api/state?user_id=${userId}`);
+                async function loadState(name) {
+            const res = await fetch(`/api/state?user_id=${userId}&name=${encodeURIComponent(name)}`);
             const data = await res.json();
 
             document.getElementById('my-gold').innerText = data.gold;
