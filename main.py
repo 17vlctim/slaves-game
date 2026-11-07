@@ -7,9 +7,15 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 # --- НАСТРОЙКИ ---
-BOT_TOKEN = "9035696213:AAELU7MTMAtHquOr18HR0zsrvBzu_2FxOnE"
+# Берем токен из настроек Render, чтобы он не светился в GitHub
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+
+# Ссылка на твой сервис на Render (без слэша на конце)
 WEB_URL = "https://slaves-game.onrender.com" 
 PORT = int(os.environ.get("PORT", 8080))
+
+if not BOT_TOKEN:
+    raise ValueError("Токен BOT_TOKEN не найден в переменных окружения!")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -22,7 +28,7 @@ users = {}
 async def cmd_start(message: types.Message):
     user_id = str(message.from_user.id)
     
-    # Ссылка теперь содержит ID и имя, чтобы сервер знал, кто зашел
+    # Передаем ID и имя в ссылку, чтобы приложение знало, кто зашел
     app_url = f"{WEB_URL}/app?user_id={user_id}&name={message.from_user.first_name}"
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -50,7 +56,7 @@ async def handle_state(request):
     if not user_id: 
         return web.json_response({"error": "No ID"}, status=400)
 
-    # АВТО-РЕГИСТРАЦИЯ: Если сервер перезапустился и память пуста, создаем игрока
+    # АВТО-РЕГИСТРАЦИЯ (чтобы при перезапуске сервера данные не пропадали из вида)
     if user_id not in users:
         users[user_id] = {
             "name": user_name,
@@ -63,6 +69,7 @@ async def handle_state(request):
     me = users[user_id]
     update_energy(me)
 
+    # Формируем рынок (все, кроме меня)
     market = []
     for uid, u in users.items():
         if uid != user_id:
@@ -73,11 +80,13 @@ async def handle_state(request):
                 "price": 1000 + (len(u["name"]) * 10)
             })
 
+    # Формируем мою империю
     my_slaves = []
     for uid, u in users.items():
         if u["owner_id"] == user_id:
             my_slaves.append({"id": uid, "name": u["name"]})
 
+    # Кто мой владелец
     my_owner = None
     if me["owner_id"] and me["owner_id"] in users:
         my_owner = users[me["owner_id"]]["name"]
@@ -111,13 +120,17 @@ async def handle_buy(request):
     buyer = users.get(buyer_id)
     target = users.get(target_id)
 
-    if not buyer or not target: return web.json_response({"success": False, "error": "Ошибка"})
+    if not buyer or not target: 
+        return web.json_response({"success": False, "error": "Ошибка данных"})
     
     price = 1000 + (len(target["name"]) * 10)
 
-    if buyer["gold"] < price: return web.json_response({"success": False, "error": "Не хватает золота!"})
-    if target["owner_id"]: return web.json_response({"success": False, "error": "Уже куплен!"})
-    if target_id == buyer_id: return web.json_response({"success": False, "error": "Нельзя себя!"})
+    if buyer["gold"] < price: 
+        return web.json_response({"success": False, "error": "Не хватает золота!"})
+    if target["owner_id"]: 
+        return web.json_response({"success": False, "error": "Уже куплен!"})
+    if target_id == buyer_id: 
+        return web.json_response({"success": False, "error": "Нельзя себя!"})
 
     buyer["gold"] -= price
     target["owner_id"] = buyer_id
@@ -127,11 +140,14 @@ async def handle_redeem(request):
     data = await request.json()
     user_id = str(data.get("user_id"))
     me = users.get(user_id)
-    if not me: return web.json_response({"success": False, "error": "Ошибка"})
-    if not me["owner_id"]: return web.json_response({"success": False, "error": "Вы свободны!"})
+    if not me: 
+        return web.json_response({"success": False, "error": "Ошибка"})
+    if not me["owner_id"]: 
+        return web.json_response({"success": False, "error": "Вы свободны!"})
 
     price = 1000 + (len(me["name"]) * 10)
-    if me["gold"] < price: return web.json_response({"success": False, "error": f"Нужно {price}💰"})
+    if me["gold"] < price: 
+        return web.json_response({"success": False, "error": f"Нужно {price}💰"})
         
     me["gold"] -= price
     me["owner_id"] = None
