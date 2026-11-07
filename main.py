@@ -1,68 +1,48 @@
 import asyncio
 import time
+import os
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command, CommandObject
+from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = "9035696213:AAELU7MTMAtHquOr18HR0zsrvBzu_2FxOnE"
 WEB_URL = "https://slaves-game.onrender.com" 
-PORT = 8080
+PORT = int(os.environ.get("PORT", 8080))
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
+# --- БАЗА ДАННЫХ (В ПАМЯТИ) ---
+# Формат: users = { "user_id": {"name": "Имя", "gold": 1000, "energy": 100, "last_energy_update": time, "owner_id": None} }
 users = {}
-chat_members = {}
 
 # --- ЛОГИКА БОТА ---
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message, command: CommandObject):
-    # Если это личка с ботом
-    if message.chat.type == 'private':
-        # Проверяем, есть ли параметр (chat_id) в ссылке перехода
-        if command.args:
-            chat_id = command.args
-            app_url = f"{WEB_URL}/app?chat_id={chat_id}"
-            
-            # Здесь используем web_app (работает только в личке)
-            kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🎮 Открыть игру", web_app=WebAppInfo(url=app_url))]
-            ])
-            await message.answer("Нажми кнопку ниже, чтобы начать игру в этом чате:", reply_markup=kb)
-        else:
-            await message.answer("Привет! Чтобы начать играть, добавь меня в группу и напиши там /start.")
-            
-    # Если это групповой чат
-    else:
-        chat_id = message.chat.id
-        bot_info = await bot.get_me()
-        # Создаем ссылку на бота с параметром chat_id
-        deep_link = f"https://t.me/{bot_info.username}?start={chat_id}"
-        
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🚀 Перейти в ЛС и играть", url=deep_link)]
-        ])
-        
-        await message.answer(
-            "Чтобы открыть полноценное Мини-приложение, перейди по кнопке ниже в мои личные сообщения и нажми там Start.", 
-            reply_markup=kb
-        )
-
-# --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
-def get_user(user_id, name="Игрок"):
-    user_id = str(user_id)
+async def cmd_start(message: types.Message):
+    user_id = str(message.from_user.id)
+    
+    # Регистрируем игрока, если его нет
     if user_id not in users:
         users[user_id] = {
-            "name": name,
+            "name": message.from_user.first_name,
             "gold": 1000,
             "energy": 100,
             "last_energy_update": time.time(),
             "owner_id": None
         }
-    return users[user_id]
 
+    # Ссылка на Mini App. Мы не передаем chat_id, так как игра теперь глобальная.
+    app_url = f"{WEB_URL}/app"
+    
+    # ВАЖНО: web_app работает ТОЛЬКО в личных сообщениях.
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎮 Открыть игру", web_app=WebAppInfo(url=app_url))]
+    ])
+    await message.answer("Добро пожаловать в глобальную экономическую игру! Нажми кнопку, чтобы начать.", reply_markup=kb)
+
+# --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 def update_energy(user):
     now = time.time()
     diff = now - user["last_energy_update"]
@@ -75,84 +55,108 @@ def update_energy(user):
 async def handle_index(request):
     return web.FileResponse('index.html')
 
+# Получить состояние игры (баланс, рынок, империю)
 async def handle_state(request):
     user_id = request.query.get("user_id")
-    chat_id = request.query.get("chat_id")
-    user_name = request.query.get("name", "Игрок")
+    if not user_id or user_id not in users:
+        return web.json_response({"error": "Игрок не найден"}, status=404)
 
-    if not user_id or not chat_id:
-        return web.json_response({"error": "Нет данных"}, status=400)
+    me = users[user_id]
+    update_energy(me)
 
-    user = get_user(user_id, user_name)
-    update_energy(user)
-
-    if chat_id not in chat_members:
-        chat_members[chat_id] = []
-    if str(user_id) not in chat_members[chat_id]:
-        chat_members[chat_id].append(str(user_id))
-
-    members_list = []
-    for uid in chat_members[chat_id]:
-        u = users.get(uid)
-        if u:
-            members_list.append({
+    # Собираем рынок (все игроки, кроме меня)
+    market = []
+    for uid, u in users.items():
+        if uid != user_id:
+            market.append({
                 "id": uid,
                 "name": u["name"],
                 "owner_id": u["owner_id"],
-                "is_me": (uid == str(user_id))
+                "price": 1000 + (len(u["name"]) * 10) # Простая формула цены
             })
 
+    # Собираем мою империю (кого я купил)
+    my_slaves = []
+    for uid, u in users.items():
+        if u["owner_id"] == user_id:
+            my_slaves.append({"id": uid, "name": u["name"]})
+
+    # Узнаем, кто мой владелец
+    my_owner = None
+    if me["owner_id"] and me["owner_id"] in users:
+        my_owner = users[me["owner_id"]]["name"]
+
     return web.json_response({
-        "my_gold": user["gold"],
-        "my_energy": user["energy"],
-        "members": members_list
+        "gold": me["gold"],
+        "energy": me["energy"],
+        "market": market,
+        "my_slaves": my_slaves,
+        "my_owner": my_owner
     })
 
+# Работать
 async def handle_work(request):
     data = await request.json()
     user_id = str(data.get("user_id"))
-    user = get_user(user_id)
-    update_energy(user)
+    me = users.get(user_id)
+    
+    if me:
+        update_energy(me)
+        if me["energy"] >= 10:
+            me["energy"] -= 10
+            me["gold"] += 50
+            return web.json_response({"success": True})
+        else:
+            return web.json_response({"success": False, "error": "Мало энергии!"})
+    return web.json_response({"success": False, "error": "Игрок не найден"})
 
-    if user["energy"] >= 10:
-        user["energy"] -= 10
-        user["gold"] += 50
-        return web.json_response({"success": True, "gold": user["gold"], "energy": user["energy"]})
-    else:
-        return web.json_response({"success": False, "error": "Мало энергии!"})
-
+# Купить игрока
 async def handle_buy(request):
     data = await request.json()
     buyer_id = str(data.get("user_id"))
     target_id = str(data.get("target_id"))
     
-    buyer = get_user(buyer_id)
-    target = get_user(target_id)
+    buyer = users.get(buyer_id)
+    target = users.get(target_id)
 
-    price = 1000
+    if not buyer or not target:
+        return web.json_response({"success": False, "error": "Ошибка игрока"})
+
+    price = 1000 + (len(target["name"]) * 10)
 
     if buyer["gold"] < price:
         return web.json_response({"success": False, "error": "Не хватает золота!"})
-    
     if target["owner_id"] is not None:
-        return web.json_response({"success": False, "error": "Он уже чей-то раб!"})
+        return web.json_response({"success": False, "error": "Игрок уже куплен!"})
+    if target_id == buyer_id:
+         return web.json_response({"success": False, "error": "Нельзя купить себя!"})
 
     buyer["gold"] -= price
     target["owner_id"] = buyer_id
 
-    return web.json_response({"success": True, "gold": buyer["gold"]})
+    return web.json_response({"success": True})
 
-async def handle_boost(request):
+# Выкупить себя
+async def handle_redeem(request):
     data = await request.json()
     user_id = str(data.get("user_id"))
-    user = get_user(user_id)
+    me = users.get(user_id)
+    
+    if not me:
+        return web.json_response({"success": False, "error": "Ошибка"})
+        
+    if not me["owner_id"]:
+        return web.json_response({"success": False, "error": "Вы и так свободны!"})
 
-    if user["gold"] >= 500:
-        user["gold"] -= 500
-        user["energy"] += 50
-        if user["energy"] > 100: user["energy"] = 100 
-        return web.json_response({"success": True, "gold": user["gold"], "energy": user["energy"]})
-    return web.json_response({"success": False, "error": "Нужно 500 золота!"})
+    price = 1000 + (len(me["name"]) * 10)
+    
+    if me["gold"] < price:
+        return web.json_response({"success": False, "error": f"Нужно {price} монет для выкупа!"})
+        
+    me["gold"] -= price
+    me["owner_id"] = None
+    return web.json_response({"success": True})
+
 
 # --- ЗАПУСК ---
 async def main():
@@ -162,7 +166,7 @@ async def main():
     app.router.add_get('/api/state', handle_state)
     app.router.add_post('/api/work', handle_work)
     app.router.add_post('/api/buy', handle_buy)
-    app.router.add_post('/api/boost', handle_boost)
+    app.router.add_post('/api/redeem', handle_redeem)
 
     runner = web.AppRunner(app)
     await runner.setup()
@@ -170,8 +174,6 @@ async def main():
     await site.start()
     
     print(f"✅ Сервер запущен на порту {PORT}")
-    print(f"✅ Ссылка: {WEB_URL}")
-    
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
