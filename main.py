@@ -8,9 +8,12 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-ADMIN_ID = os.environ.get("ADMIN_ID", "")
+ADMIN_ID = str(os.environ.get("ADMIN_ID", "")) # Приводим к строке
 WEB_URL = "https://slaves-game.onrender.com" 
 PORT = int(os.environ.get("PORT", 8080))
+
+if not BOT_TOKEN:
+    raise ValueError("Токен BOT_TOKEN не найден в переменных окружения!")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -18,7 +21,6 @@ dp = Dispatcher()
 # --- БАЗА ДАННЫХ (В ПАМЯТИ) ---
 users = {}
 
-# Стартовые NPC с редкостью и уровнями
 npcs = {
     "npc_1": {"name": "🧑‍🌾 Крестьянин", "rarity": "Обычный", "price": 500, "base_income": 10, "level": 1, "owner_id": None, "is_npc": True},
     "npc_2": {"name": "⚔️ Рыцарь", "rarity": "Редкий", "price": 1500, "base_income": 40, "level": 1, "owner_id": None, "is_npc": True},
@@ -34,6 +36,15 @@ async def cmd_start(message: types.Message):
         [InlineKeyboardButton(text="🎮 Открыть игру", web_app=WebAppInfo(url=app_url))]
     ])
     await message.answer("Добро пожаловать в Империю! Нажми кнопку, чтобы начать.", reply_markup=kb)
+
+def create_user(user_id, name):
+    if user_id not in users:
+        users[user_id] = {
+            "name": name, "gold": 1000, "energy": 100, 
+            "last_energy_update": time.time(), "owner_id": None, 
+            "last_collected": time.time(), "last_daily": 0
+        }
+    return users[user_id]
 
 def update_energy(user):
     now = time.time()
@@ -53,17 +64,9 @@ async def handle_state(request):
     
     if not user_id: return web.json_response({"error": "No ID"}, status=400)
 
-    if user_id not in users:
-        users[user_id] = {
-            "name": user_name, "gold": 1000, "energy": 100, 
-            "last_energy_update": time.time(), "owner_id": None, 
-            "last_collected": time.time(), "last_daily": 0
-        }
-
-    me = users[user_id]
+    me = create_user(user_id, user_name)
     update_energy(me)
 
-    # Считаем доход в час (учитывая уровни NPC)
     income_per_hour = 0
     all_entities = {**users, **npcs}
     
@@ -71,24 +74,18 @@ async def handle_state(request):
     for uid, u in all_entities.items():
         if u["owner_id"] == user_id:
             if u.get("is_npc"):
-                # Формула дохода NPC: базовый * уровень
                 inc = u["base_income"] * u["level"]
                 my_slaves.append({"id": uid, "name": u["name"], "rarity": u["rarity"], "level": u["level"], "income": inc, "is_npc": True})
             else:
-                # Люди приносят фиксированно 50
                 inc = 50
                 my_slaves.append({"id": uid, "name": u["name"], "rarity": "Игрок", "level": 1, "income": inc, "is_npc": False})
             income_per_hour += inc
 
-    # Накопления
     now = time.time()
     hours_passed = min(24, (now - me["last_collected"]) / 3600)
     pending_income = int(hours_passed * income_per_hour)
-
-    # Кулдаун дейлика (24 часа)
     can_daily = (now - me["last_daily"]) > 86400
 
-    # Рынок (люди + свободные NPC)
     market = []
     for uid, u in users.items():
         if uid != user_id:
@@ -96,7 +93,6 @@ async def handle_state(request):
     for uid, n in npcs.items():
         market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True})
 
-    # Рейтинг (Топ-5 по золоту)
     sorted_users = sorted(users.values(), key=lambda x: x["gold"], reverse=True)
     leaderboard = [{"name": u["name"], "gold": u["gold"]} for u in sorted_users[:5]]
 
@@ -195,12 +191,24 @@ async def handle_upgrade(request):
     target["level"] += 1
     return web.json_response({"success": True})
 
+# ИСПРАВЛЕННАЯ АДМИНКА
 async def handle_admin_cheat(request):
-    data = await request.json()
-    if str(data.get("user_id")) == str(ADMIN_ID):
-        users[data["user_id"]]["gold"] += int(data.get("amount", 10000))
-        return web.json_response({"success": True})
-    return web.json_response({"success": False})
+    try:
+        data = await request.json()
+        user_id = str(data.get("user_id"))
+        amount = int(data.get("amount", 10000))
+        
+        if user_id == ADMIN_ID:
+            # Если игрока нет в памяти (после перезапуска), создаем его
+            if user_id not in users:
+                create_user(user_id, "Владелец")
+            
+            users[user_id]["gold"] += amount
+            return web.json_response({"success": True})
+        return web.json_response({"success": False, "error": "Доступ запрещен"})
+    except Exception as e:
+        print("Ошибка в админке:", e)
+        return web.json_response({"success": False, "error": "Ошибка сервера"})
 
 async def main():
     app = web.Application()
