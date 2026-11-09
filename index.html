@@ -6,33 +6,47 @@
     <title>Империя</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background: #17212b; color: white; margin: 0; padding-bottom: 60px; }
-        .header { background: #242f3d; padding: 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+        body { font-family: sans-serif; background: #17212b; color: white; margin: 0; padding-bottom: 70px; }
+        .header { background: #242f3d; padding: 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #333; }
         .stats { display: flex; gap: 15px; font-weight: bold; }
         .gold { color: #f1c40f; } .energy { color: #2ecc71; }
         
         .content { padding: 15px; }
-        .tabs { display: flex; position: fixed; bottom: 0; width: 100%; z-index: 10; }
-        .tab-btn { flex: 1; padding: 12px; background: #242f3d; border: none; color: #aaa; font-size: 14px; cursor: pointer; font-weight: bold; }
-        .tab-btn.active { background: #2481cc; color: white; }
         
-        .card { background: #242f3d; border-radius: 10px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #555; }
+        /* Нижнее меню */
+        .tabs { display: flex; position: fixed; bottom: 0; width: 100%; z-index: 10; background: #242f3d; padding-bottom: env(safe-area-inset-bottom); }
+        .tab-btn { flex: 1; padding: 10px 5px; background: transparent; border: none; color: #aaa; font-size: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .tab-btn.active { color: #2481cc; }
+        .tab-btn .icon { font-size: 20px; }
+
+        /* Карточки */
+        .card { background: #242f3d; border-radius: 12px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #555; }
         .rarity-Обычный { border-left-color: #aaa; } 
         .rarity-Редкий { border-left-color: #3498db; } 
         .rarity-Эпический { border-left-color: #9b59b6; } 
         .rarity-Игрок { border-left-color: #e67e22; }
 
-        .btn { padding: 10px 15px; border-radius: 8px; border: none; background: #2481cc; color: white; font-weight: bold; cursor: pointer; font-size: 13px; text-align: center;}
+        /* Кнопки */
+        .btn { padding: 12px 15px; border-radius: 10px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 14px; text-align: center; }
         .btn-green { background: #2ecc71; color: #000; }
         .btn-red { background: #e74c3c; }
         .btn-orange { background: #e67e22; }
         .btn-purple { background: #9b59b6; }
-        .btn-yellow { background: #f1c40f; color: #000; width: 100%; padding: 15px; margin-bottom: 15px; font-size: 16px;}
+        .btn-yellow { background: #f1c40f; color: #000; }
+        .btn-full { width: 100%; margin-bottom: 10px; padding: 15px; font-size: 16px;}
+        
+        /* Главная страница */
+        .income-block { text-align: center; background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%); padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .income-block h1 { margin: 0; font-size: 32px; color: #f1c40f; }
+        .income-block p { margin: 5px 0 0 0; color: #ddd; }
+
+        /* Профиль */
+        .profile-info { text-align: center; background: #242f3d; padding: 20px; border-radius: 15px; margin-bottom: 15px; }
+        .profile-avatar { font-size: 50px; margin-bottom: 10px; }
+        .profile-stat { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; }
         
         .admin-panel { display: none; margin-top: 20px; padding: 15px; border: 2px dashed #9b59b6; border-radius: 10px; }
-        .income-info { text-align: center; color: #2ecc71; font-weight: bold; margin-bottom: 15px; font-size: 16px;}
-        
-        .lb-card { display: flex; justify-content: space-between; padding: 10px; background: #242f3d; margin-bottom: 5px; border-radius: 8px; }
+        .lb-card { display: flex; justify-content: space-between; padding: 12px; background: #242f3d; margin-bottom: 8px; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -45,42 +59,67 @@
     </div>
 
     <div class="content">
-        <!-- РЫНОК -->
-        <div id="tab-market" style="display: block;">
-            <button class="btn btn-orange" style="width:100%; margin-bottom: 15px; padding: 15px;" onclick="doWork()">🔨 Поработать (-10⚡, +50💰)</button>
-            <h3>Глобальный рынок:</h3>
-            <div id="market-list">Загрузка...</div>
-            
-            <div id="admin-panel" class="admin-panel">
-                <h4 style="margin-top:0; color:#9b59b6;">Панель Владельца</h4>
-                <button class="btn btn-purple" style="width:100%;" onclick="cheatMoney()">💸 Накинуть 10 000 монет</button>
+        <!-- 1. ГЛАВНАЯ -->
+        <div id="tab-home" style="display: block;">
+            <div class="income-block">
+                <h1><span id="income-per-hour">0</span> 💰/час</h1>
+                <p>Твой пассивный доход</p>
             </div>
+            
+            <button id="daily-btn" class="btn btn-yellow btn-full" onclick="claimDaily()" style="display:none;">🎁 Забрать ежедневный бонус</button>
+            <button id="collect-btn" class="btn btn-yellow btn-full" onclick="collectIncome()" style="display:none;">Забрать <span id="pending-amount">0</span>💰</button>
+            
+            <button class="btn btn-orange btn-full" onclick="doWork()">🔨 Поработать (-10⚡, +50💰)</button>
         </div>
 
-        <!-- ИМПЕРИЯ -->
+        <!-- 2. РЫНОК -->
+        <div id="tab-market" style="display: none;">
+            <h3>Глобальный рынок:</h3>
+            <div id="market-list">Загрузка...</div>
+        </div>
+
+        <!-- 3. ИМПЕРИЯ -->
         <div id="tab-empire" style="display: none;">
-            <button id="daily-btn" class="btn btn-yellow" onclick="claimDaily()" style="display:none;">🎁 Забрать ежедневный бонус</button>
-            
-            <div class="income-info">Твой доход: <span id="income-per-hour">0</span> 💰/час</div>
-            <button id="collect-btn" class="btn btn-yellow" onclick="collectIncome()" style="display:none;">Забрать <span id="pending-amount">0</span>💰</button>
-            
             <div id="owner-info" style="margin-bottom: 15px;"></div>
-            
             <h3>Мои подчиненные:</h3>
             <div id="slaves-list">Загрузка...</div>
         </div>
 
-        <!-- РЕЙТИНГ -->
+        <!-- 4. РЕЙТИНГ -->
         <div id="tab-rating" style="display: none;">
             <h3>🏆 Топ-5 игроков</h3>
             <div id="leaderboard">Загрузка...</div>
         </div>
+
+        <!-- 5. ПРОФИЛЬ -->
+        <div id="tab-profile" style="display: none;">
+            <div class="profile-info">
+                <div class="profile-avatar">👤</div>
+                <h2 id="profile-name" style="margin:0;">Игрок</h2>
+            </div>
+            
+            <div class="card" style="flex-direction: column; align-items: stretch; padding: 0;">
+                <div class="profile-stat"><span>Приглашено друзей:</span> <b id="stat-ref">0</b></div>
+                <div class="profile-stat"><span>Куплено рабов:</span> <b id="stat-bought">0</b></div>
+                <div class="profile-stat" style="border:none;"><span>Раз продан:</span> <b id="stat-sold">0</b></div>
+            </div>
+
+            <button class="btn btn-green btn-full" style="margin-top: 15px;" onclick="inviteFriend()">🤝 Пригласить друга (+500💰)</button>
+
+            <div id="admin-panel" class="admin-panel">
+                <h4 style="margin-top:0; color:#9b59b6;">Панель Владельца</h4>
+                <button class="btn btn-purple btn-full" onclick="cheatMoney()">💸 Накинуть 10 000 монет</button>
+            </div>
+        </div>
     </div>
 
+    <!-- НИЖНЕЕ МЕНЮ -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('market', this)">Рынок</button>
-        <button class="tab-btn" onclick="switchTab('empire', this)">Империя</button>
-        <button class="tab-btn" onclick="switchTab('rating', this)">Рейтинг</button>
+        <button class="tab-btn active" onclick="switchTab('home', this)"><span class="icon">🏠</span>Главная</button>
+        <button class="tab-btn" onclick="switchTab('market', this)"><span class="icon">🛒</span>Рынок</button>
+        <button class="tab-btn" onclick="switchTab('empire', this)"><span class="icon">👑</span>Империя</button>
+        <button class="tab-btn" onclick="switchTab('rating', this)"><span class="icon">🏆</span>Рейтинг</button>
+        <button class="tab-btn" onclick="switchTab('profile', this)"><span class="icon">👤</span>Профиль</button>
     </div>
 
     <script>
@@ -96,13 +135,13 @@
             document.body.innerHTML = "<h3 style='padding:20px; text-align:center;'>Ошибка: Открой игру через бота!</h3>";
         } else {
             loadState(userName);
-            setInterval(() => loadState(userName), 30000); // Автообновление
+            setInterval(() => loadState(userName), 30000); 
         }
 
         function switchTab(tab, btn) {
-            document.getElementById('tab-market').style.display = tab === 'market' ? 'block' : 'none';
-            document.getElementById('tab-empire').style.display = tab === 'empire' ? 'block' : 'none';
-            document.getElementById('tab-rating').style.display = tab === 'rating' ? 'block' : 'none';
+            ['home', 'market', 'empire', 'rating', 'profile'].forEach(t => {
+                document.getElementById(`tab-${t}`).style.display = t === tab ? 'block' : 'none';
+            });
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
         }
@@ -112,13 +151,13 @@
                 const res = await fetch(`/api/state?user_id=${userId}&name=${encodeURIComponent(name)}`);
                 const data = await res.json();
 
+                // Обновляем шапку
                 document.getElementById('my-gold').innerText = data.gold;
                 document.getElementById('my-energy').innerText = data.energy;
                 document.getElementById('income-per-hour').innerText = data.income_per_hour;
 
-                // Кнопки
+                // Кнопки на главной
                 document.getElementById('daily-btn').style.display = data.can_daily ? 'block' : 'none';
-                
                 if (data.pending_income > 0) {
                     document.getElementById('collect-btn').style.display = 'block';
                     document.getElementById('pending-amount').innerText = data.pending_income;
@@ -126,6 +165,11 @@
                     document.getElementById('collect-btn').style.display = 'none';
                 }
 
+                // Профиль
+                document.getElementById('profile-name').innerText = data.my_name;
+                document.getElementById('stat-ref').innerText = data.ref_count;
+                document.getElementById('stat-bought').innerText = data.bought_count;
+                document.getElementById('stat-sold').innerText = data.sold_count;
                 if (data.is_admin) document.getElementById('admin-panel').style.display = 'block';
 
                 // Рынок
@@ -154,9 +198,9 @@
                     let btnHtml = '';
                     
                     if (s.is_npc) {
-                        let upgCost = s.income * 100; // Примерная стоимость
+                        let upgCost = s.income * 100; 
                         btnHtml = `<div style="text-align:right;"><span style="color:#2ecc71; font-size:12px; display:block; margin-bottom:5px;">+${s.income}💰/час</span>
-                        <button class="btn btn-purple" onclick="upgradeNpc('${s.id}')">Улучшить<br><small>${upgCost}💰</small></button></div>`;
+                        <button class="btn btn-purple" style="padding: 8px;" onclick="upgradeNpc('${s.id}')">Улучшить<br><small>${upgCost}💰</small></button></div>`;
                     } else {
                         btnHtml = `<span style="color:#2ecc71; font-size:12px;">+${s.income}💰/час</span>`;
                     }
@@ -184,6 +228,11 @@
                 });
 
             } catch (e) { console.error(e); }
+        }
+
+        function inviteFriend() {
+            const botLink = `https://t.me/${tg.initDataUnsafe?.receiver?.username || 'your_bot_username'}?start=${userId}`;
+            tg.showAlert(`Твоя ссылка для друзей:\n${botLink}\n\nСкопируй её и отправь другу!`);
         }
 
         async function claimDaily() {
@@ -226,7 +275,8 @@
 
         async function cheatMoney() {
             const res = await fetch('/api/admin_cheat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, amount: 10000 }) });
-            if ((await res.json()).success) loadState(userName);
+            const data = await res.json();
+            if (data.success) { loadState(userName); } else alert(data.error);
         }
     </script>
 </body>
