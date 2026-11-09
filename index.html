@@ -429,7 +429,8 @@
             if (data.error) return showToast(data.error, 'error');
 
             document.getElementById('modal-name').innerText = data.name;
-            document.getElementById('modal-id').innerText = `ID: ${data.id}`;
+            // Если это NPC, у него нет game_id, поэтому ставим прочерк
+            document.getElementById('modal-id').innerText = data.game_id ? `ID: ${data.game_id}` : `NPC`;
             document.getElementById('modal-gold').innerText = data.gold;
             document.getElementById('modal-income').innerText = `+${data.income}`;
             document.getElementById('modal-owner').innerText = data.owner_name || "Свободен";
