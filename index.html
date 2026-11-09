@@ -525,3 +525,31 @@
         }
         async function doWork() {
             const res = await fetch('/api/work', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
+            const data = await res.json();
+            if (data.success) { tg.HapticFeedback.impactOccurred('light'); showToast('+50 монет!'); loadState(userName); } else showToast(data.error, 'error');
+        }
+        async function buyPlayer(targetId) {
+            if(!confirm("Купить этого игрока?")) return;
+            const res = await fetch('/api/buy', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, target_id: targetId }) });
+            const data = await res.json();
+            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); showToast('Успешно куплен!'); loadState(userName); } else showToast(data.error, 'error');
+        }
+        async function upgradeNpc(targetId) {
+            const res = await fetch('/api/upgrade', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, target_id: targetId }) });
+            const data = await res.json();
+            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); showToast('Улучшено!'); loadState(userName); } else showToast(data.error, 'error');
+        }
+        async function redeemSelf() {
+            if(!confirm("Выкупить себя из рабства?")) return;
+            const res = await fetch('/api/redeem', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
+            const data = await res.json();
+            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); showToast('Ты свободен!'); loadState(userName); } else showToast(data.error, 'error');
+        }
+        async function cheatMoney() {
+            const res = await fetch('/api/admin_cheat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, amount: 10000 }) });
+            const data = await res.json();
+            if (data.success) { showToast('+10 000 монет!'); loadState(userName); } else showToast(data.error, 'error');
+        }
+    </script>
+</body>
+</html>
