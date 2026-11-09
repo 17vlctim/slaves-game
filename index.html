@@ -6,50 +6,66 @@
     <title>Империя</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background: #17212b; color: white; margin: 0; padding-bottom: 70px; }
-        .header { background: #242f3d; padding: 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #333; }
-        .stats { display: flex; gap: 15px; font-weight: bold; }
+        :root { --bg: #17212b; --card: #242f3d; --text: #ffffff; --primary: #2481cc; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 80px; }
+        
+        .header { background: var(--card); padding: 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #333; }
+        .stats { display: flex; gap: 15px; font-weight: bold; font-size: 16px; }
         .gold { color: #f1c40f; } .energy { color: #2ecc71; }
         
         .content { padding: 15px; }
         
-        /* Нижнее меню */
-        .tabs { display: flex; position: fixed; bottom: 0; width: 100%; z-index: 10; background: #242f3d; padding-bottom: env(safe-area-inset-bottom); }
-        .tab-btn { flex: 1; padding: 10px 5px; background: transparent; border: none; color: #aaa; font-size: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-        .tab-btn.active { color: #2481cc; }
-        .tab-btn .icon { font-size: 20px; }
+        /* Меню снизу (3D кнопки) */
+        .tabs { display: flex; position: fixed; bottom: 0; width: 100%; z-index: 10; background: #17212b; padding: 10px 5px calc(10px + env(safe-area-inset-bottom)) 5px; justify-content: space-around; border-top: 1px solid #242f3d;}
+        .tab-btn { flex: 1; max-width: 70px; margin: 0 2px; background: var(--card); border: none; border-radius: 12px; padding: 8px 0; color: #8b9bb4; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; box-shadow: 0 4px 0 #1a222c; transition: all 0.1s; }
+        .tab-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #1a222c; }
+        .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 0 #1a5a91; }
+        .tab-btn .icon { font-size: 22px; }
+        .tab-btn .text { font-size: 10px; font-weight: bold; }
 
         /* Карточки */
-        .card { background: #242f3d; border-radius: 12px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #555; }
-        .rarity-Обычный { border-left-color: #aaa; } 
-        .rarity-Редкий { border-left-color: #3498db; } 
-        .rarity-Эпический { border-left-color: #9b59b6; } 
-        .rarity-Игрок { border-left-color: #e67e22; }
+        .card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #555; }
+        .rarity-Обычный { border-left-color: #aaa; } .rarity-Редкий { border-left-color: #3498db; } 
+        .rarity-Эпический { border-left-color: #9b59b6; } .rarity-Игрок { border-left-color: #e67e22; }
 
         /* Кнопки */
-        .btn { padding: 12px 15px; border-radius: 10px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 14px; text-align: center; }
-        .btn-green { background: #2ecc71; color: #000; }
-        .btn-red { background: #e74c3c; }
-        .btn-orange { background: #e67e22; }
-        .btn-purple { background: #9b59b6; }
-        .btn-yellow { background: #f1c40f; color: #000; }
+        .btn { padding: 12px 15px; border-radius: 12px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 14px; text-align: center; transition: transform 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+        .btn:active { transform: translateY(2px); box-shadow: none; }
+        .btn-green { background: #2ecc71; color: #000; box-shadow: 0 4px 0 #1f9c52;}
+        .btn-red { background: #e74c3c; box-shadow: 0 4px 0 #b03a2e;}
+        .btn-orange { background: #e67e22; box-shadow: 0 4px 0 #b86318;}
+        .btn-purple { background: #9b59b6; box-shadow: 0 4px 0 #7d4394;}
+        .btn-yellow { background: #f1c40f; color: #000; box-shadow: 0 4px 0 #c0a00c;}
         .btn-full { width: 100%; margin-bottom: 10px; padding: 15px; font-size: 16px;}
         
-        /* Главная страница */
-        .income-block { text-align: center; background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%); padding: 20px; border-radius: 15px; margin-bottom: 20px; }
-        .income-block h1 { margin: 0; font-size: 32px; color: #f1c40f; }
-        .income-block p { margin: 5px 0 0 0; color: #ddd; }
+        /* Главная */
+        .income-block { text-align: center; background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%); padding: 25px 20px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .income-block h1 { margin: 0; font-size: 36px; color: #f1c40f; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        .income-block p { margin: 5px 0 0 0; color: #ddd; font-size: 14px; }
 
         /* Профиль */
-        .profile-info { text-align: center; background: #242f3d; padding: 20px; border-radius: 15px; margin-bottom: 15px; }
-        .profile-avatar { font-size: 50px; margin-bottom: 10px; }
-        .profile-stat { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; }
+        .profile-info { text-align: center; background: var(--card); padding: 20px; border-radius: 15px; margin-bottom: 15px; }
+        .profile-avatar { font-size: 60px; margin-bottom: 10px; text-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .profile-stat { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #333; font-size: 15px;}
+
+        /* Рейтинг */
+        .select-custom { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; background: var(--card); color: white; border: 1px solid #444; font-size: 15px; font-weight: bold; outline: none; appearance: none; }
+        .lb-card { display: flex; justify-content: space-between; padding: 12px; background: var(--card); margin-bottom: 8px; border-radius: 10px; align-items: center; }
+        .lb-card.me { border: 2px solid var(--primary); }
         
         .admin-panel { display: none; margin-top: 20px; padding: 15px; border: 2px dashed #9b59b6; border-radius: 10px; }
-        .lb-card { display: flex; justify-content: space-between; padding: 12px; background: #242f3d; margin-bottom: 8px; border-radius: 10px; }
+
+        /* Уведомления (Toasts) */
+        #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; width: 90%; max-width: 400px; }
+        .toast { background: #2ecc71; color: white; padding: 15px 20px; border-radius: 12px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.4); text-align: center; animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .toast.error { background: #e74c3c; }
+        @keyframes slideDown { from { top: -100px; opacity: 0; } to { top: 0; opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.9); } }
     </style>
 </head>
 <body>
+
+    <div id="toast-container"></div>
 
     <div class="header">
         <div class="stats">
@@ -62,32 +78,35 @@
         <!-- 1. ГЛАВНАЯ -->
         <div id="tab-home" style="display: block;">
             <div class="income-block">
-                <h1><span id="income-per-hour">0</span> 💰/час</h1>
-                <p>Твой пассивный доход</p>
+                <h1><span id="income-per-hour">0</span> 💰</h1>
+                <p>Твой доход в час</p>
             </div>
             
             <button id="daily-btn" class="btn btn-yellow btn-full" onclick="claimDaily()" style="display:none;">🎁 Забрать ежедневный бонус</button>
-            <button id="collect-btn" class="btn btn-yellow btn-full" onclick="collectIncome()" style="display:none;">Забрать <span id="pending-amount">0</span>💰</button>
+            <button id="collect-btn" class="btn btn-yellow btn-full" onclick="collectIncome()" style="display:none;">Собрать <span id="pending-amount">0</span>💰</button>
             
             <button class="btn btn-orange btn-full" onclick="doWork()">🔨 Поработать (-10⚡, +50💰)</button>
         </div>
 
         <!-- 2. РЫНОК -->
         <div id="tab-market" style="display: none;">
-            <h3>Глобальный рынок:</h3>
+            <h3 style="margin-top:0;">Глобальный рынок:</h3>
             <div id="market-list">Загрузка...</div>
         </div>
 
         <!-- 3. ИМПЕРИЯ -->
         <div id="tab-empire" style="display: none;">
             <div id="owner-info" style="margin-bottom: 15px;"></div>
-            <h3>Мои подчиненные:</h3>
+            <h3 style="margin-top:0;">Мои подчиненные:</h3>
             <div id="slaves-list">Загрузка...</div>
         </div>
 
         <!-- 4. РЕЙТИНГ -->
         <div id="tab-rating" style="display: none;">
-            <h3>🏆 Топ-5 игроков</h3>
+            <select id="lb-sort" class="select-custom" onchange="renderLeaderboard()">
+                <option value="gold">🏆 Топ-100 по богатству (💰)</option>
+                <option value="income">📈 Топ-100 по доходу в час</option>
+            </select>
             <div id="leaderboard">Загрузка...</div>
         </div>
 
@@ -115,11 +134,11 @@
 
     <!-- НИЖНЕЕ МЕНЮ -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('home', this)"><span class="icon">🏠</span>Главная</button>
-        <button class="tab-btn" onclick="switchTab('market', this)"><span class="icon">🛒</span>Рынок</button>
-        <button class="tab-btn" onclick="switchTab('empire', this)"><span class="icon">👑</span>Империя</button>
-        <button class="tab-btn" onclick="switchTab('rating', this)"><span class="icon">🏆</span>Рейтинг</button>
-        <button class="tab-btn" onclick="switchTab('profile', this)"><span class="icon">👤</span>Профиль</button>
+        <button class="tab-btn active" onclick="switchTab('home', this)"><span class="icon">🏠</span><span class="text">Главная</span></button>
+        <button class="tab-btn" onclick="switchTab('market', this)"><span class="icon">🛒</span><span class="text">Рынок</span></button>
+        <button class="tab-btn" onclick="switchTab('empire', this)"><span class="icon">👑</span><span class="text">Империя</span></button>
+        <button class="tab-btn" onclick="switchTab('rating', this)"><span class="icon">🏆</span><span class="text">Рейтинг</span></button>
+        <button class="tab-btn" onclick="switchTab('profile', this)"><span class="icon">👤</span><span class="text">Профиль</span></button>
     </div>
 
     <script>
@@ -130,12 +149,29 @@
         const tgUser = tg.initDataUnsafe?.user;
         const userId = tgUser ? tgUser.id : urlParams.get('user_id');
         const userName = tgUser ? tgUser.first_name : (urlParams.get('name') || "Игрок");
+        
+        let botUsername = "";
+        let rawLeaderboard = [];
 
         if (!userId) {
             document.body.innerHTML = "<h3 style='padding:20px; text-align:center;'>Ошибка: Открой игру через бота!</h3>";
         } else {
             loadState(userName);
             setInterval(() => loadState(userName), 30000); 
+        }
+
+        // --- ВСПЛЫВАЮЩИЕ УВЕДОМЛЕНИЯ ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = (type === 'success' ? '✅ ' : '❌ ') + message;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s ease-in forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
         }
 
         function switchTab(tab, btn) {
@@ -151,12 +187,12 @@
                 const res = await fetch(`/api/state?user_id=${userId}&name=${encodeURIComponent(name)}`);
                 const data = await res.json();
 
-                // Обновляем шапку
+                botUsername = data.bot_username;
+
                 document.getElementById('my-gold').innerText = data.gold;
                 document.getElementById('my-energy').innerText = data.energy;
                 document.getElementById('income-per-hour').innerText = data.income_per_hour;
 
-                // Кнопки на главной
                 document.getElementById('daily-btn').style.display = data.can_daily ? 'block' : 'none';
                 if (data.pending_income > 0) {
                     document.getElementById('collect-btn').style.display = 'block';
@@ -165,7 +201,6 @@
                     document.getElementById('collect-btn').style.display = 'none';
                 }
 
-                // Профиль
                 document.getElementById('profile-name').innerText = data.my_name;
                 document.getElementById('stat-ref').innerText = data.ref_count;
                 document.getElementById('stat-bought').innerText = data.bought_count;
@@ -200,9 +235,9 @@
                     if (s.is_npc) {
                         let upgCost = s.income * 100; 
                         btnHtml = `<div style="text-align:right;"><span style="color:#2ecc71; font-size:12px; display:block; margin-bottom:5px;">+${s.income}💰/час</span>
-                        <button class="btn btn-purple" style="padding: 8px;" onclick="upgradeNpc('${s.id}')">Улучшить<br><small>${upgCost}💰</small></button></div>`;
+                        <button class="btn btn-purple" style="padding: 8px; font-size:12px;" onclick="upgradeNpc('${s.id}')">Улучшить<br><small>${upgCost}💰</small></button></div>`;
                     } else {
-                        btnHtml = `<span style="color:#2ecc71; font-size:12px;">+${s.income}💰/час</span>`;
+                        btnHtml = `<span style="color:#2ecc71; font-size:12px; font-weight:bold;">+${s.income}💰/час</span>`;
                     }
 
                     div.innerHTML = `<div><b>${s.name}</b><br><small style="color:#aaa;">Ур. ${s.level}</small></div> ${btnHtml}`;
@@ -217,66 +252,110 @@
                         <button class="btn btn-red" style="width:100%; margin-top:10px;" onclick="redeemSelf()">Выкупить себя</button>
                     </div>`;
                 } else {
-                    ownerInfo.innerHTML = `<div class="card" style="border-left-color:#2ecc71; justify-content:center;">Ты свободен</div>`;
+                    ownerInfo.innerHTML = `<div class="card" style="border-left-color:#2ecc71; justify-content:center;"><b>Ты свободен!</b></div>`;
                 }
 
                 // Рейтинг
-                const lbList = document.getElementById('leaderboard');
-                lbList.innerHTML = '';
-                data.leaderboard.forEach((u, i) => {
-                    lbList.innerHTML += `<div class="lb-card"><span>${i+1}. ${u.name}</span> <b>${u.gold}💰</b></div>`;
-                });
+                rawLeaderboard = data.leaderboard;
+                renderLeaderboard();
 
             } catch (e) { console.error(e); }
         }
 
-        function inviteFriend() {
-            const botLink = `https://t.me/${tg.initDataUnsafe?.receiver?.username || 'your_bot_username'}?start=${userId}`;
-            tg.showAlert(`Твоя ссылка для друзей:\n${botLink}\n\nСкопируй её и отправь другу!`);
+        // --- РЕНДЕР РЕЙТИНГА ---
+        function renderLeaderboard() {
+            const sortKey = document.getElementById('lb-sort').value;
+            const lbList = document.getElementById('leaderboard');
+            lbList.innerHTML = '';
+
+            // Сортируем копию массива
+            let sorted = [...rawLeaderboard].sort((a, b) => b[sortKey] - a[sortKey]).slice(0, 100);
+
+            sorted.forEach((u, i) => {
+                let medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+                let val = sortKey === 'gold' ? `${u.gold}💰` : `+${u.income}💰/ч`;
+                let isMe = (u.id == userId) ? "me" : ""; // Если это текущий игрок, выделим
+
+                lbList.innerHTML += `<div class="lb-card ${isMe}">
+                    <span><span style="display:inline-block; width:30px;">${medal}</span> ${u.name}</span> 
+                    <b>${val}</b>
+                </div>`;
+            });
         }
 
+        // --- ПРИГЛАШЕНИЕ ДРУЗЕЙ ---
+        function inviteFriend() {
+            if (!botUsername) return;
+            
+            const botLink = `https://t.me/${botUsername}?start=${userId}`;
+            
+            // 1. Копируем в буфер
+            navigator.clipboard.writeText(botLink).then(() => {
+                showToast('Ссылка скопирована!');
+            }).catch(err => {
+                console.error('Ошибка копирования', err);
+            });
+
+            // 2. Открываем меню "Поделиться" в Telegram
+            const shareText = `Присоединяйся к моей Империи! Забери свои 1000 монет:`;
+            const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(botLink)}&text=${encodeURIComponent(shareText)}`;
+            
+            // Небольшая задержка, чтобы юзер увидел тост
+            setTimeout(() => {
+                tg.openTelegramLink(shareUrl);
+            }, 500);
+        }
+
+        // --- ДЕЙСТВИЯ (API) ---
         async function claimDaily() {
             const res = await fetch('/api/daily', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
             const data = await res.json();
-            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); loadState(userName); } else alert(data.error);
+            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); showToast('Бонус получен!'); loadState(userName); } 
+            else showToast(data.error, 'error');
         }
 
         async function collectIncome() {
             const res = await fetch('/api/collect', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
             const data = await res.json();
-            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); loadState(userName); } else alert(data.error);
+            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); showToast('Доход собран!'); loadState(userName); } 
+            else showToast(data.error, 'error');
         }
 
         async function doWork() {
             const res = await fetch('/api/work', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
             const data = await res.json();
-            if (data.success) { tg.HapticFeedback.impactOccurred('light'); loadState(userName); } else alert(data.error);
+            if (data.success) { tg.HapticFeedback.impactOccurred('light'); showToast('+50 монет!'); loadState(userName); } 
+            else showToast(data.error, 'error');
         }
 
         async function buyPlayer(targetId) {
-            if(!confirm("Купить?")) return;
+            if(!confirm("Купить этого игрока?")) return;
             const res = await fetch('/api/buy', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, target_id: targetId }) });
             const data = await res.json();
-            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); loadState(userName); } else alert(data.error);
+            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); showToast('Успешно куплен!'); loadState(userName); } 
+            else showToast(data.error, 'error');
         }
 
         async function upgradeNpc(targetId) {
             const res = await fetch('/api/upgrade', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, target_id: targetId }) });
             const data = await res.json();
-            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); loadState(userName); } else alert(data.error);
+            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); showToast('Улучшено!'); loadState(userName); } 
+            else showToast(data.error, 'error');
         }
 
         async function redeemSelf() {
-            if(!confirm("Выкупить себя?")) return;
+            if(!confirm("Выкупить себя из рабства?")) return;
             const res = await fetch('/api/redeem', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
             const data = await res.json();
-            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); loadState(userName); } else alert(data.error);
+            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); showToast('Ты свободен!'); loadState(userName); } 
+            else showToast(data.error, 'error');
         }
 
         async function cheatMoney() {
             const res = await fetch('/api/admin_cheat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, amount: 10000 }) });
             const data = await res.json();
-            if (data.success) { loadState(userName); } else alert(data.error);
+            if (data.success) { showToast('+10 000 монет!'); loadState(userName); } 
+            else showToast(data.error, 'error');
         }
     </script>
 </body>
