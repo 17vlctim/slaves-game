@@ -20,12 +20,27 @@ dp = Dispatcher()
 
 # --- БАЗА ДАННЫХ (В ПАМЯТИ) ---
 users = {}
-
 npcs = {
     "npc_1": {"name": "🧑‍🌾 Крестьянин", "rarity": "Обычный", "price": 500, "base_income": 10, "level": 1, "owner_id": None, "is_npc": True},
     "npc_2": {"name": "⚔️ Рыцарь", "rarity": "Редкий", "price": 1500, "base_income": 40, "level": 1, "owner_id": None, "is_npc": True},
     "npc_3": {"name": "🧙‍♂️ Маг", "rarity": "Эпический", "price": 3000, "base_income": 100, "level": 1, "owner_id": None, "is_npc": True},
 }
+
+# Счетчик для игровых ID
+next_game_id = 1000
+
+def create_user(user_id, name):
+    global next_game_id
+    if user_id not in users:
+        users[user_id] = {
+            "name": name, "gold": 1000, "energy": 100, 
+            "last_energy_update": time.time(), "owner_id": None, 
+            "last_collected": time.time(), "last_daily": 0,
+            "last_ad_watch": 0, "ref_count": 0, "bought_count": 0, "sold_count": 0,
+            "game_id": next_game_id # <--- Выдаем короткий ID
+        }
+        next_game_id += 1
+    return users[user_id]
 
 # --- ЛОГИКА БОТА ---
 @dp.message(Command("start"))
@@ -38,14 +53,7 @@ async def cmd_start(message: types.Message, command: CommandObject):
         users[referrer_id]["gold"] += 500
         users[referrer_id]["ref_count"] = users[referrer_id].get("ref_count", 0) + 1
 
-    if user_id not in users:
-        users[user_id] = {
-            "name": user_name, "gold": 1000, "energy": 100, 
-            "last_energy_update": time.time(), "owner_id": None, 
-            "last_collected": time.time(), "last_daily": 0,
-            "last_ad_watch": 0,
-            "ref_count": 0, "bought_count": 0, "sold_count": 0
-        }
+    create_user(user_id, user_name)
 
     app_url = f"{WEB_URL}/app?user_id={user_id}&name={user_name}"
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -71,15 +79,7 @@ async def handle_state(request):
     
     if not user_id: return web.json_response({"error": "No ID"}, status=400)
 
-    if user_id not in users:
-        users[user_id] = {
-            "name": user_name, "gold": 1000, "energy": 100, 
-            "last_energy_update": time.time(), "owner_id": None, 
-            "last_collected": time.time(), "last_daily": 0,
-            "last_ad_watch": 0, "ref_count": 0, "bought_count": 0, "sold_count": 0
-        }
-
-    me = users[user_id]
+    me = create_user(user_id, user_name)
     update_energy(me)
 
     all_entities = {**users, **npcs}
@@ -92,16 +92,16 @@ async def handle_state(request):
         for s in all_entities.values():
             if s["owner_id"] == uid:
                 u_inc += (s["base_income"] * s["level"]) if s.get("is_npc") else 50
-        all_users_rating.append({"id": uid, "name": u["name"], "gold": u["gold"], "income": u_inc})
+        all_users_rating.append({"id": uid, "name": u["name"], "gold": u["gold"], "income": u_inc, "game_id": u["game_id"]})
         
         if u["owner_id"] == user_id:
-            my_slaves.append({"id": uid, "name": u["name"], "rarity": "Игрок", "level": 1, "income": 50, "is_npc": False})
+            my_slaves.append({"id": uid, "name": u["name"], "rarity": "Игрок", "level": 1, "income": 50, "is_npc": False, "game_id": u["game_id"]})
             income_per_hour += 50
 
     for uid, n in npcs.items():
         if n["owner_id"] == user_id:
             inc = n["base_income"] * n["level"]
-            my_slaves.append({"id": uid, "name": n["name"], "rarity": n["rarity"], "level": n["level"], "income": inc, "is_npc": True})
+            my_slaves.append({"id": uid, "name": n["name"], "rarity": n["rarity"], "level": n["level"], "income": inc, "is_npc": True, "game_id": ""})
             income_per_hour += inc
 
     now = time.time()
@@ -113,9 +113,9 @@ async def handle_state(request):
     market = []
     for uid, u in users.items():
         if uid != user_id:
-            market.append({"id": uid, "name": u["name"], "owner_id": u["owner_id"], "price": 1000 + (len(u["name"]) * 10), "rarity": "Игрок", "is_npc": False})
+            market.append({"id": uid, "name": u["name"], "owner_id": u["owner_id"], "price": 1000 + (len(u["name"]) * 10), "rarity": "Игрок", "is_npc": False, "game_id": u["game_id"]})
     for uid, n in npcs.items():
-        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True})
+        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True, "game_id": ""})
 
     my_owner = None
     if me["owner_id"] and me["owner_id"] in all_entities:
@@ -130,7 +130,8 @@ async def handle_state(request):
         "is_admin": (str(user_id) == str(ADMIN_ID)),
         "can_daily": can_daily, "can_watch_ad": can_watch_ad,
         "leaderboard": all_users_rating,
-        "my_name": me["name"], "ref_count": me.get("ref_count", 0),
+        "my_name": me["name"], "my_game_id": me["game_id"], # <--- Отдаем ID
+        "ref_count": me.get("ref_count", 0),
         "bought_count": me.get("bought_count", 0), "sold_count": me.get("sold_count", 0),
         "bot_username": bot_info.username
     })
@@ -153,7 +154,7 @@ async def handle_user_info(request):
                 target_slaves.append({"id": uid, "name": u["name"], "rarity": u["rarity"], "income": inc, "is_npc": True})
             else:
                 inc = 50
-                target_slaves.append({"id": uid, "name": u["name"], "rarity": "Игрок", "income": inc, "is_npc": False})
+                target_slaves.append({"id": uid, "name": u["name"], "rarity": "Игрок", "income": inc, "is_npc": False, "game_id": u["game_id"]})
             target_income += inc
 
     target_owner_name = None
@@ -166,24 +167,23 @@ async def handle_user_info(request):
         "income": target_income,
         "slaves": target_slaves,
         "owner_name": target_owner_name,
-        "id": target_id
+        "id": target_id,
+        "game_id": target_user["game_id"] # <--- Отдаем ID в профиль
     })
+
+# ... (Функции handle_collect, handle_work, handle_daily, handle_watch_ad, handle_buy, handle_redeem, handle_upgrade, handle_admin_cheat остаются БЕЗ ИЗМЕНЕНИЙ. Скопируй их из прошлого полного кода) ...
 
 async def handle_collect(request):
     data = await request.json()
     user_id = str(data.get("user_id"))
     me = users.get(user_id)
     if not me: return web.json_response({"success": False})
-    
     income_per_hour = 0
     for u in {**users, **npcs}.values():
-        if u["owner_id"] == user_id:
-            income_per_hour += (u["base_income"] * u["level"]) if u.get("is_npc") else 50
-        
+        if u["owner_id"] == user_id: income_per_hour += (u["base_income"] * u["level"]) if u.get("is_npc") else 50
     now = time.time()
     hours_passed = min(24, (now - me["last_collected"]) / 3600)
     pending = int(hours_passed * income_per_hour)
-
     if pending <= 0: return web.json_response({"success": False, "error": "Нечего забирать"})
     me["gold"] += pending
     me["last_collected"] = now
@@ -206,7 +206,6 @@ async def handle_daily(request):
     user_id = str(data.get("user_id"))
     me = users.get(user_id)
     now = time.time()
-    
     if me and (now - me["last_daily"]) > 86400:
         me["gold"] += 500
         me["last_daily"] = now
@@ -218,51 +217,39 @@ async def handle_watch_ad(request):
     user_id = str(data.get("user_id"))
     me = users.get(user_id)
     now = time.time()
-    
     if me and (now - me.get("last_ad_watch", 0)) > 3600:
         me["gold"] += 250
         me["last_ad_watch"] = now
         return web.json_response({"success": True})
-    return web.json_response({"success": False, "error": "Кулдаун! Жди час."})
+    return web.json_response({"success": False, "error": "Кулдаун!"})
 
 async def handle_buy(request):
     data = await request.json()
     buyer_id = str(data.get("user_id"))
     target_id = str(data.get("target_id"))
-    
     all_entities = {**users, **npcs}
     buyer = users.get(buyer_id)
     target = all_entities.get(target_id)
-
     if not buyer or not target: return web.json_response({"success": False, "error": "Ошибка"})
-    
     price = target.get("price", 1000 + (len(target["name"]) * 10))
-
     if buyer["gold"] < price: return web.json_response({"success": False, "error": "Нет денег!"})
     if target["owner_id"]: return web.json_response({"success": False, "error": "Уже куплен!"})
     if target_id == buyer_id: return web.json_response({"success": False, "error": "Нельзя себя!"})
     if target_id == buyer["owner_id"]: return web.json_response({"success": False, "error": "Нельзя владельца!"})
-
     buyer["gold"] -= price
     target["owner_id"] = buyer_id
-    
     buyer["bought_count"] = buyer.get("bought_count", 0) + 1
-    if not target.get("is_npc"):
-        target["sold_count"] = target.get("sold_count", 0) + 1
-
+    if not target.get("is_npc"): target["sold_count"] = target.get("sold_count", 0) + 1
     return web.json_response({"success": True})
 
 async def handle_redeem(request):
     data = await request.json()
     user_id = str(data.get("user_id"))
     me = users.get(user_id)
-    
     if not me or me.get("is_npc"): return web.json_response({"success": False, "error": "Ошибка"})
     if not me["owner_id"]: return web.json_response({"success": False, "error": "Вы свободны!"})
-
     price = 1000 + (len(me["name"]) * 10)
     if me["gold"] < price: return web.json_response({"success": False, "error": f"Нужно {price}💰"})
-        
     me["gold"] -= price
     me["owner_id"] = None
     return web.json_response({"success": True})
@@ -271,15 +258,11 @@ async def handle_upgrade(request):
     data = await request.json()
     user_id = str(data.get("user_id"))
     target_id = str(data.get("target_id"))
-    
     target = npcs.get(target_id)
     me = users.get(user_id)
-    
     if not target or target["owner_id"] != user_id: return web.json_response({"success": False, "error": "Это не твой NPC"})
-    
     cost = target["base_income"] * 100 * target["level"]
     if me["gold"] < cost: return web.json_response({"success": False, "error": f"Нужно {cost}💰"})
-
     me["gold"] -= cost
     target["level"] += 1
     return web.json_response({"success": True})
@@ -289,7 +272,6 @@ async def handle_admin_cheat(request):
         data = await request.json()
         user_id = str(data.get("user_id"))
         amount = int(data.get("amount", 10000))
-        
         if user_id == ADMIN_ID:
             if user_id not in users: return web.json_response({"success": False, "error": "Нет профиля"})
             users[user_id]["gold"] += amount
@@ -297,6 +279,7 @@ async def handle_admin_cheat(request):
         return web.json_response({"success": False, "error": "Доступ запрещен"})
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)})
+
 
 async def main():
     app = web.Application()
