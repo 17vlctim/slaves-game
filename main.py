@@ -3,17 +3,17 @@ import time
 import os
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandObject
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-ADMIN_ID = str(os.environ.get("ADMIN_ID", "")) # Приводим к строке
+ADMIN_ID = str(os.environ.get("ADMIN_ID", ""))
 WEB_URL = "https://slaves-game.onrender.com" 
 PORT = int(os.environ.get("PORT", 8080))
 
 if not BOT_TOKEN:
-    raise ValueError("Токен BOT_TOKEN не найден в переменных окружения!")
+    raise ValueError("Токен BOT_TOKEN не найден!")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -29,22 +29,30 @@ npcs = {
 
 # --- ЛОГИКА БОТА ---
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message):
+async def cmd_start(message: types.Message, command: CommandObject):
     user_id = str(message.from_user.id)
-    app_url = f"{WEB_URL}/app?user_id={user_id}&name={message.from_user.first_name}"
+    user_name = message.from_user.first_name
+    
+    # Реферальная система (если перешел по ссылке друга)
+    referrer_id = command.args
+    if referrer_id and referrer_id != user_id and referrer_id in users:
+        users[referrer_id]["gold"] += 500 # Бонус пригласившему
+        users[referrer_id]["ref_count"] = users[referrer_id].get("ref_count", 0) + 1
+
+    # Создаем профиль, если нет
+    if user_id not in users:
+        users[user_id] = {
+            "name": user_name, "gold": 1000, "energy": 100, 
+            "last_energy_update": time.time(), "owner_id": None, 
+            "last_collected": time.time(), "last_daily": 0,
+            "ref_count": 0, "bought_count": 0, "sold_count": 0
+        }
+
+    app_url = f"{WEB_URL}/app?user_id={user_id}&name={user_name}"
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🎮 Открыть игру", web_app=WebAppInfo(url=app_url))]
     ])
     await message.answer("Добро пожаловать в Империю! Нажми кнопку, чтобы начать.", reply_markup=kb)
-
-def create_user(user_id, name):
-    if user_id not in users:
-        users[user_id] = {
-            "name": name, "gold": 1000, "energy": 100, 
-            "last_energy_update": time.time(), "owner_id": None, 
-            "last_collected": time.time(), "last_daily": 0
-        }
-    return users[user_id]
 
 def update_energy(user):
     now = time.time()
@@ -64,7 +72,15 @@ async def handle_state(request):
     
     if not user_id: return web.json_response({"error": "No ID"}, status=400)
 
-    me = create_user(user_id, user_name)
+    if user_id not in users:
+        users[user_id] = {
+            "name": user_name, "gold": 1000, "energy": 100, 
+            "last_energy_update": time.time(), "owner_id": None, 
+            "last_collected": time.time(), "last_daily": 0,
+            "ref_count": 0, "bought_count": 0, "sold_count": 0
+        }
+
+    me = users[user_id]
     update_energy(me)
 
     income_per_hour = 0
@@ -105,7 +121,9 @@ async def handle_state(request):
         "income_per_hour": income_per_hour, "pending_income": pending_income,
         "market": market, "my_slaves": my_slaves, "my_owner": my_owner,
         "is_admin": (str(user_id) == str(ADMIN_ID)),
-        "can_daily": can_daily, "leaderboard": leaderboard
+        "can_daily": can_daily, "leaderboard": leaderboard,
+        "my_name": me["name"], "ref_count": me.get("ref_count", 0),
+        "bought_count": me.get("bought_count", 0), "sold_count": me.get("sold_count", 0)
     })
 
 async def handle_collect(request):
@@ -172,6 +190,12 @@ async def handle_buy(request):
 
     buyer["gold"] -= price
     target["owner_id"] = buyer_id
+    
+    # Статистика
+    buyer["bought_count"] = buyer.get("bought_count", 0) + 1
+    if not target.get("is_npc"):
+        target["sold_count"] = target.get("sold_count", 0) + 1
+
     return web.json_response({"success": True})
 
 async def handle_upgrade(request):
@@ -191,7 +215,6 @@ async def handle_upgrade(request):
     target["level"] += 1
     return web.json_response({"success": True})
 
-# ИСПРАВЛЕННАЯ АДМИНКА
 async def handle_admin_cheat(request):
     try:
         data = await request.json()
@@ -199,16 +222,12 @@ async def handle_admin_cheat(request):
         amount = int(data.get("amount", 10000))
         
         if user_id == ADMIN_ID:
-            # Если игрока нет в памяти (после перезапуска), создаем его
-            if user_id not in users:
-                create_user(user_id, "Владелец")
-            
+            if user_id not in users: return web.json_response({"success": False, "error": "Нет профиля"})
             users[user_id]["gold"] += amount
             return web.json_response({"success": True})
         return web.json_response({"success": False, "error": "Доступ запрещен"})
     except Exception as e:
-        print("Ошибка в админке:", e)
-        return web.json_response({"success": False, "error": "Ошибка сервера"})
+        return web.json_response({"success": False, "error": str(e)})
 
 async def main():
     app = web.Application()
