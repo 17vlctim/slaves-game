@@ -27,16 +27,25 @@ npcs = {
     "npc_3": {"name": "🧙‍♂️ Маг", "rarity": "Эпический", "price": 3000, "base_income": 100, "level": 1, "owner_id": None, "is_npc": True},
 }
 
-def create_user(user_id, name):
+def create_user(user_id, name, referrer_id=None):
     if user_id not in users:
-        # Генерируем уникальный 9-значный ID (не привязанный к Telegram)
+        # Генерируем уникальный 9-значный ID
         while True:
             fake_id = random.randint(100000000, 999999999)
             if not any(u.get("game_id") == fake_id for u in users.values()):
                 break
-                
+        
+        start_gold = 1000
+        # Если пришел по реф-ссылке, даем бонус новичку
+        if referrer_id and referrer_id in users:
+            start_gold += 500 
+            # И даем бонус тому, кто пригласил
+            users[referrer_id]["gold"] += 500
+            users[referrer_id]["ref_count"] = users[referrer_id].get("ref_count", 0) + 1
+            print(f"Игрок {user_id} приглашен {referrer_id}. Бонусы начислены.")
+
         users[user_id] = {
-            "name": name, "gold": 1000, "energy": 100, 
+            "name": name, "gold": start_gold, "energy": 100, 
             "last_energy_update": time.time(), "owner_id": None, 
             "last_collected": time.time(), "last_daily": 0,
             "last_ad_watch": 0, "ref_count": 0, "bought_count": 0, "sold_count": 0,
@@ -51,11 +60,7 @@ async def cmd_start(message: types.Message, command: CommandObject):
     user_name = message.from_user.first_name
     referrer_id = command.args
     
-    if referrer_id and referrer_id != user_id and referrer_id in users:
-        users[referrer_id]["gold"] += 500
-        users[referrer_id]["ref_count"] = users[referrer_id].get("ref_count", 0) + 1
-
-    create_user(user_id, user_name)
+    create_user(user_id, user_name, referrer_id)
 
     app_url = f"{WEB_URL}/app?user_id={user_id}&name={user_name}"
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -138,17 +143,16 @@ async def handle_state(request):
         "bot_username": bot_info.username
     })
 
+# ... (функции handle_user_info, handle_collect, handle_work, handle_daily, handle_watch_ad, handle_buy, handle_redeem, handle_upgrade, handle_admin_cheat остаются БЕЗ ИЗМЕНЕНИЙ. Скопируй их из предыдущего кода, они работают) ...
+
 async def handle_user_info(request):
     target_id = request.query.get("target_id")
     if not target_id: return web.json_response({"error": "No ID"}, status=400)
-
     target_user = users.get(target_id)
     if not target_user: return web.json_response({"error": "Игрок не найден"}, status=404)
-
     all_entities = {**users, **npcs}
     target_income = 0
     target_slaves = []
-    
     for uid, u in all_entities.items():
         if u["owner_id"] == target_id:
             if u.get("is_npc"):
@@ -158,20 +162,10 @@ async def handle_user_info(request):
                 inc = 50
                 target_slaves.append({"id": uid, "name": u["name"], "rarity": "Игрок", "income": inc, "is_npc": False, "game_id": u["game_id"]})
             target_income += inc
-
     target_owner_name = None
     if target_user["owner_id"] and target_user["owner_id"] in all_entities:
         target_owner_name = all_entities[target_user["owner_id"]]["name"]
-
-    return web.json_response({
-        "name": target_user["name"],
-        "gold": target_user["gold"],
-        "income": target_income,
-        "slaves": target_slaves,
-        "owner_name": target_owner_name,
-        "id": target_id,
-        "game_id": target_user["game_id"]
-    })
+    return web.json_response({"name": target_user["name"], "gold": target_user["gold"], "income": target_income, "slaves": target_slaves, "owner_name": target_owner_name, "id": target_id, "game_id": target_user["game_id"]})
 
 async def handle_collect(request):
     data = await request.json()
