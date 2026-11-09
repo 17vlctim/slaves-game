@@ -18,28 +18,23 @@ if not BOT_TOKEN:
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# --- БАЗА ДАННЫХ (В ПАМЯТИ) ---
 users = {}
-
 npcs = {
     "npc_1": {"name": "🧑‍🌾 Крестьянин", "rarity": "Обычный", "price": 500, "base_income": 10, "level": 1, "owner_id": None, "is_npc": True},
     "npc_2": {"name": "⚔️ Рыцарь", "rarity": "Редкий", "price": 1500, "base_income": 40, "level": 1, "owner_id": None, "is_npc": True},
     "npc_3": {"name": "🧙‍♂️ Маг", "rarity": "Эпический", "price": 3000, "base_income": 100, "level": 1, "owner_id": None, "is_npc": True},
 }
 
-# --- ЛОГИКА БОТА ---
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, command: CommandObject):
     user_id = str(message.from_user.id)
     user_name = message.from_user.first_name
-    
-    # Реферальная система (если перешел по ссылке друга)
     referrer_id = command.args
+    
     if referrer_id and referrer_id != user_id and referrer_id in users:
-        users[referrer_id]["gold"] += 500 # Бонус пригласившему
+        users[referrer_id]["gold"] += 500
         users[referrer_id]["ref_count"] = users[referrer_id].get("ref_count", 0) + 1
 
-    # Создаем профиль, если нет
     if user_id not in users:
         users[user_id] = {
             "name": user_name, "gold": 1000, "energy": 100, 
@@ -62,7 +57,6 @@ def update_energy(user):
         user["energy"] = min(100, user["energy"] + regen)
         user["last_energy_update"] = now
 
-# --- API ---
 async def handle_index(request):
     return web.FileResponse('index.html')
 
@@ -83,18 +77,28 @@ async def handle_state(request):
     me = users[user_id]
     update_energy(me)
 
-    income_per_hour = 0
     all_entities = {**users, **npcs}
-    
     my_slaves = []
-    for uid, u in all_entities.items():
+    income_per_hour = 0
+
+    # Считаем доход для всех игроков (для рейтинга)
+    all_users_rating = []
+    for uid, u in users.items():
+        u_inc = 0
+        for s in all_entities.values():
+            if s["owner_id"] == uid:
+                u_inc += (s["base_income"] * s["level"]) if s.get("is_npc") else 50
+        all_users_rating.append({"id": uid, "name": u["name"], "gold": u["gold"], "income": u_inc})
+        
+        # Если это мои рабы, добавляем в список
         if u["owner_id"] == user_id:
-            if u.get("is_npc"):
-                inc = u["base_income"] * u["level"]
-                my_slaves.append({"id": uid, "name": u["name"], "rarity": u["rarity"], "level": u["level"], "income": inc, "is_npc": True})
-            else:
-                inc = 50
-                my_slaves.append({"id": uid, "name": u["name"], "rarity": "Игрок", "level": 1, "income": inc, "is_npc": False})
+            my_slaves.append({"id": uid, "name": u["name"], "rarity": "Игрок", "level": 1, "income": 50, "is_npc": False})
+            income_per_hour += 50
+
+    for uid, n in npcs.items():
+        if n["owner_id"] == user_id:
+            inc = n["base_income"] * n["level"]
+            my_slaves.append({"id": uid, "name": n["name"], "rarity": n["rarity"], "level": n["level"], "income": inc, "is_npc": True})
             income_per_hour += inc
 
     now = time.time()
@@ -109,22 +113,26 @@ async def handle_state(request):
     for uid, n in npcs.items():
         market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True})
 
-    sorted_users = sorted(users.values(), key=lambda x: x["gold"], reverse=True)
-    leaderboard = [{"name": u["name"], "gold": u["gold"]} for u in sorted_users[:5]]
-
     my_owner = None
     if me["owner_id"] and me["owner_id"] in all_entities:
         my_owner = all_entities[me["owner_id"]]["name"]
+
+    bot_info = await bot.get_me()
 
     return web.json_response({
         "gold": me["gold"], "energy": me["energy"],
         "income_per_hour": income_per_hour, "pending_income": pending_income,
         "market": market, "my_slaves": my_slaves, "my_owner": my_owner,
         "is_admin": (str(user_id) == str(ADMIN_ID)),
-        "can_daily": can_daily, "leaderboard": leaderboard,
+        "can_daily": can_daily, 
+        "leaderboard": all_users_rating, # Отдаем всех, фронт отсортирует
         "my_name": me["name"], "ref_count": me.get("ref_count", 0),
-        "bought_count": me.get("bought_count", 0), "sold_count": me.get("sold_count", 0)
+        "bought_count": me.get("bought_count", 0), "sold_count": me.get("sold_count", 0),
+        "bot_username": bot_info.username
     })
+
+# ... (остальные handle_ функции остаются без изменений: handle_collect, handle_work, handle_daily, handle_buy, handle_upgrade, handle_admin_cheat) ...
+# Скопируй их из предыдущего сообщения, они не менялись.
 
 async def handle_collect(request):
     data = await request.json()
@@ -191,7 +199,6 @@ async def handle_buy(request):
     buyer["gold"] -= price
     target["owner_id"] = buyer_id
     
-    # Статистика
     buyer["bought_count"] = buyer.get("bought_count", 0) + 1
     if not target.get("is_npc"):
         target["sold_count"] = target.get("sold_count", 0) + 1
