@@ -1,6 +1,7 @@
 import asyncio
 import time
 import os
+import random
 from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command, CommandObject
@@ -26,20 +27,21 @@ npcs = {
     "npc_3": {"name": "🧙‍♂️ Маг", "rarity": "Эпический", "price": 3000, "base_income": 100, "level": 1, "owner_id": None, "is_npc": True},
 }
 
-# Счетчик для игровых ID
-next_game_id = 1000
-
 def create_user(user_id, name):
-    global next_game_id
     if user_id not in users:
+        # Генерируем уникальный 9-значный ID (не привязанный к Telegram)
+        while True:
+            fake_id = random.randint(100000000, 999999999)
+            if not any(u.get("game_id") == fake_id for u in users.values()):
+                break
+                
         users[user_id] = {
             "name": name, "gold": 1000, "energy": 100, 
             "last_energy_update": time.time(), "owner_id": None, 
             "last_collected": time.time(), "last_daily": 0,
             "last_ad_watch": 0, "ref_count": 0, "bought_count": 0, "sold_count": 0,
-            "game_id": next_game_id # <--- Выдаем короткий ID
+            "game_id": fake_id
         }
-        next_game_id += 1
     return users[user_id]
 
 # --- ЛОГИКА БОТА ---
@@ -101,7 +103,7 @@ async def handle_state(request):
     for uid, n in npcs.items():
         if n["owner_id"] == user_id:
             inc = n["base_income"] * n["level"]
-            my_slaves.append({"id": uid, "name": n["name"], "rarity": n["rarity"], "level": n["level"], "income": inc, "is_npc": True, "game_id": ""})
+            my_slaves.append({"id": uid, "name": n["name"], "rarity": n["rarity"], "level": n["level"], "income": inc, "is_npc": True, "game_id": None})
             income_per_hour += inc
 
     now = time.time()
@@ -115,7 +117,7 @@ async def handle_state(request):
         if uid != user_id:
             market.append({"id": uid, "name": u["name"], "owner_id": u["owner_id"], "price": 1000 + (len(u["name"]) * 10), "rarity": "Игрок", "is_npc": False, "game_id": u["game_id"]})
     for uid, n in npcs.items():
-        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True, "game_id": ""})
+        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True, "game_id": None})
 
     my_owner = None
     if me["owner_id"] and me["owner_id"] in all_entities:
@@ -130,7 +132,7 @@ async def handle_state(request):
         "is_admin": (str(user_id) == str(ADMIN_ID)),
         "can_daily": can_daily, "can_watch_ad": can_watch_ad,
         "leaderboard": all_users_rating,
-        "my_name": me["name"], "my_game_id": me["game_id"], # <--- Отдаем ID
+        "my_name": me["name"], "my_game_id": me["game_id"],
         "ref_count": me.get("ref_count", 0),
         "bought_count": me.get("bought_count", 0), "sold_count": me.get("sold_count", 0),
         "bot_username": bot_info.username
@@ -168,10 +170,8 @@ async def handle_user_info(request):
         "slaves": target_slaves,
         "owner_name": target_owner_name,
         "id": target_id,
-        "game_id": target_user["game_id"] # <--- Отдаем ID в профиль
+        "game_id": target_user["game_id"]
     })
-
-# ... (Функции handle_collect, handle_work, handle_daily, handle_watch_ad, handle_buy, handle_redeem, handle_upgrade, handle_admin_cheat остаются БЕЗ ИЗМЕНЕНИЙ. Скопируй их из прошлого полного кода) ...
 
 async def handle_collect(request):
     data = await request.json()
@@ -279,7 +279,6 @@ async def handle_admin_cheat(request):
         return web.json_response({"success": False, "error": "Доступ запрещен"})
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)})
-
 
 async def main():
     app = web.Application()
