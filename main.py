@@ -269,9 +269,16 @@ async def handle_admin_cheat(request):
         data = await request.json()
         user_id = str(data.get("user_id"))
         amount = int(data.get("amount", 10000))
+        item_type = data.get("type", "gold")
+        
         if user_id == ADMIN_ID:
             if user_id not in users: return web.json_response({"success": False, "error": "Нет профиля"})
-            users[user_id]["gold"] += amount
+            
+            if item_type == "gold":
+                users[user_id]["gold"] += amount
+            elif item_type == "crystals":
+                users[user_id]["crystals"] += amount
+                
             return web.json_response({"success": True})
         return web.json_response({"success": False, "error": "Доступ запрещен"})
     except Exception as e:
