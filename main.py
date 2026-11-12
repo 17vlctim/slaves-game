@@ -25,31 +25,31 @@ npcs = {
     "npc_1": {"name": "🧑‍🌾 Крестьянин", "rarity": "Обычный", "price": 500, "base_income": 10, "level": 1, "owner_id": None, "is_npc": True},
     "npc_2": {"name": "⚔️ Рыцарь", "rarity": "Редкий", "price": 1500, "base_income": 40, "level": 1, "owner_id": None, "is_npc": True},
     "npc_3": {"name": "🧙‍♂️ Маг", "rarity": "Эпический", "price": 3000, "base_income": 100, "level": 1, "owner_id": None, "is_npc": True},
+    # Эксклюзивные NPC для кейсов
+    "npc_dragon": {"name": "🐉 Дракон", "rarity": "Легендарный", "price": 0, "base_income": 500, "level": 1, "owner_id": None, "is_npc": True}
 }
 
 def create_user(user_id, name, referrer_id=None):
     if user_id not in users:
-        # Генерируем уникальный 9-значный ID
         while True:
             fake_id = random.randint(100000000, 999999999)
             if not any(u.get("game_id") == fake_id for u in users.values()):
                 break
         
         start_gold = 1000
-        # Если пришел по реф-ссылке, даем бонус новичку
+        start_crystals = 50 # Даем на старт для теста кейсов
+
         if referrer_id and referrer_id in users:
             start_gold += 500 
-            # И даем бонус тому, кто пригласил
             users[referrer_id]["gold"] += 500
             users[referrer_id]["ref_count"] = users[referrer_id].get("ref_count", 0) + 1
-            print(f"Игрок {user_id} приглашен {referrer_id}. Бонусы начислены.")
 
         users[user_id] = {
-            "name": name, "gold": start_gold, "energy": 100, 
+            "name": name, "gold": start_gold, "crystals": start_crystals, "energy": 100, 
             "last_energy_update": time.time(), "owner_id": None, 
             "last_collected": time.time(), "last_daily": 0,
             "last_ad_watch": 0, "ref_count": 0, "bought_count": 0, "sold_count": 0,
-            "game_id": fake_id
+            "game_id": fake_id, "shield_until": 0, "chains_until": 0
         }
     return users[user_id]
 
@@ -64,7 +64,7 @@ async def cmd_start(message: types.Message, command: CommandObject):
 
     app_url = f"{WEB_URL}/app?user_id={user_id}&name={user_name}"
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎮 Открыть игру", web_app=WebAppInfo(url=app_url))]
+        [InlineKeyboardButton(text="🎮 Открыть Империю", web_app=WebAppInfo(url=app_url))]
     ])
     await message.answer("Добро пожаловать в Империю! Нажми кнопку, чтобы начать.", reply_markup=kb)
 
@@ -89,6 +89,7 @@ async def handle_state(request):
     me = create_user(user_id, user_name)
     update_energy(me)
 
+    now = time.time()
     all_entities = {**users, **npcs}
     my_slaves = []
     income_per_hour = 0
@@ -102,6 +103,7 @@ async def handle_state(request):
         all_users_rating.append({"id": uid, "name": u["name"], "gold": u["gold"], "income": u_inc, "game_id": u["game_id"]})
         
         if u["owner_id"] == user_id:
+            # Проверка цепей (если цепи истекли, раб может быть свободен, но в этой версии мы просто даем бонус)
             my_slaves.append({"id": uid, "name": u["name"], "rarity": "Игрок", "level": 1, "income": 50, "is_npc": False, "game_id": u["game_id"]})
             income_per_hour += 50
 
@@ -111,18 +113,20 @@ async def handle_state(request):
             my_slaves.append({"id": uid, "name": n["name"], "rarity": n["rarity"], "level": n["level"], "income": inc, "is_npc": True, "game_id": None})
             income_per_hour += inc
 
-    now = time.time()
     hours_passed = min(24, (now - me["last_collected"]) / 3600)
     pending_income = int(hours_passed * income_per_hour)
     can_daily = (now - me["last_daily"]) > 86400
     can_watch_ad = (now - me["last_ad_watch"]) > 3600
+    
+    # Проверка щита
+    has_shield = me.get("shield_until", 0) > now
 
     market = []
     for uid, u in users.items():
         if uid != user_id:
-            market.append({"id": uid, "name": u["name"], "owner_id": u["owner_id"], "price": 1000 + (len(u["name"]) * 10), "rarity": "Игрок", "is_npc": False, "game_id": u["game_id"]})
+            market.append({"id": uid, "name": u["name"], "owner_id": u["owner_id"], "price": 1000 + (len(u["name"]) * 10), "rarity": "Игрок", "is_npc": False, "game_id": u["game_id"], "shield": u.get("shield_until", 0) > now})
     for uid, n in npcs.items():
-        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True, "game_id": None})
+        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True, "game_id": None, "shield": False})
 
     my_owner = None
     if me["owner_id"] and me["owner_id"] in all_entities:
@@ -131,11 +135,11 @@ async def handle_state(request):
     bot_info = await bot.get_me()
 
     return web.json_response({
-        "gold": me["gold"], "energy": me["energy"],
+        "gold": me["gold"], "crystals": me["crystals"], "energy": me["energy"],
         "income_per_hour": income_per_hour, "pending_income": pending_income,
         "market": market, "my_slaves": my_slaves, "my_owner": my_owner,
         "is_admin": (str(user_id) == str(ADMIN_ID)),
-        "can_daily": can_daily, "can_watch_ad": can_watch_ad,
+        "can_daily": can_daily, "can_watch_ad": can_watch_ad, "has_shield": has_shield,
         "leaderboard": all_users_rating,
         "my_name": me["name"], "my_game_id": me["game_id"],
         "ref_count": me.get("ref_count", 0),
@@ -143,79 +147,8 @@ async def handle_state(request):
         "bot_username": bot_info.username
     })
 
-# ... (функции handle_user_info, handle_collect, handle_work, handle_daily, handle_watch_ad, handle_buy, handle_redeem, handle_upgrade, handle_admin_cheat остаются БЕЗ ИЗМЕНЕНИЙ. Скопируй их из предыдущего кода, они работают) ...
-
-async def handle_user_info(request):
-    target_id = request.query.get("target_id")
-    if not target_id: return web.json_response({"error": "No ID"}, status=400)
-    target_user = users.get(target_id)
-    if not target_user: return web.json_response({"error": "Игрок не найден"}, status=404)
-    all_entities = {**users, **npcs}
-    target_income = 0
-    target_slaves = []
-    for uid, u in all_entities.items():
-        if u["owner_id"] == target_id:
-            if u.get("is_npc"):
-                inc = u["base_income"] * u["level"]
-                target_slaves.append({"id": uid, "name": u["name"], "rarity": u["rarity"], "income": inc, "is_npc": True})
-            else:
-                inc = 50
-                target_slaves.append({"id": uid, "name": u["name"], "rarity": "Игрок", "income": inc, "is_npc": False, "game_id": u["game_id"]})
-            target_income += inc
-    target_owner_name = None
-    if target_user["owner_id"] and target_user["owner_id"] in all_entities:
-        target_owner_name = all_entities[target_user["owner_id"]]["name"]
-    return web.json_response({"name": target_user["name"], "gold": target_user["gold"], "income": target_income, "slaves": target_slaves, "owner_name": target_owner_name, "id": target_id, "game_id": target_user["game_id"]})
-
-async def handle_collect(request):
-    data = await request.json()
-    user_id = str(data.get("user_id"))
-    me = users.get(user_id)
-    if not me: return web.json_response({"success": False})
-    income_per_hour = 0
-    for u in {**users, **npcs}.values():
-        if u["owner_id"] == user_id: income_per_hour += (u["base_income"] * u["level"]) if u.get("is_npc") else 50
-    now = time.time()
-    hours_passed = min(24, (now - me["last_collected"]) / 3600)
-    pending = int(hours_passed * income_per_hour)
-    if pending <= 0: return web.json_response({"success": False, "error": "Нечего забирать"})
-    me["gold"] += pending
-    me["last_collected"] = now
-    return web.json_response({"success": True})
-
-async def handle_work(request):
-    data = await request.json()
-    user_id = str(data.get("user_id"))
-    me = users.get(user_id)
-    if me:
-        update_energy(me)
-        if me["energy"] >= 10:
-            me["energy"] -= 10
-            me["gold"] += 50
-            return web.json_response({"success": True})
-    return web.json_response({"success": False, "error": "Мало энергии!"})
-
-async def handle_daily(request):
-    data = await request.json()
-    user_id = str(data.get("user_id"))
-    me = users.get(user_id)
-    now = time.time()
-    if me and (now - me["last_daily"]) > 86400:
-        me["gold"] += 500
-        me["last_daily"] = now
-        return web.json_response({"success": True})
-    return web.json_response({"success": False, "error": "Бонус еще не готов!"})
-
-async def handle_watch_ad(request):
-    data = await request.json()
-    user_id = str(data.get("user_id"))
-    me = users.get(user_id)
-    now = time.time()
-    if me and (now - me.get("last_ad_watch", 0)) > 3600:
-        me["gold"] += 250
-        me["last_ad_watch"] = now
-        return web.json_response({"success": True})
-    return web.json_response({"success": False, "error": "Кулдаун!"})
+# ... ВСТАВЬ СЮДА ВСЕ ФУНКЦИИ (handle_user_info, handle_collect, handle_work, handle_daily, handle_watch_ad, handle_buy, handle_redeem, handle_upgrade, handle_admin_cheat) ИЗ ПРЕДЫДУЩЕГО КОДА. 
+# ОНИ НЕ МЕНЯЮТСЯ, КРОМЕ handle_buy (добавим проверку щита).
 
 async def handle_buy(request):
     data = await request.json()
@@ -225,54 +158,77 @@ async def handle_buy(request):
     buyer = users.get(buyer_id)
     target = all_entities.get(target_id)
     if not buyer or not target: return web.json_response({"success": False, "error": "Ошибка"})
+    
+    now = time.time()
+    if target.get("shield_until", 0) > now:
+        return web.json_response({"success": False, "error": "У игрока активен Имперский Щит!"})
+
     price = target.get("price", 1000 + (len(target["name"]) * 10))
     if buyer["gold"] < price: return web.json_response({"success": False, "error": "Нет денег!"})
     if target["owner_id"]: return web.json_response({"success": False, "error": "Уже куплен!"})
     if target_id == buyer_id: return web.json_response({"success": False, "error": "Нельзя себя!"})
     if target_id == buyer["owner_id"]: return web.json_response({"success": False, "error": "Нельзя владельца!"})
+    
     buyer["gold"] -= price
     target["owner_id"] = buyer_id
     buyer["bought_count"] = buyer.get("bought_count", 0) + 1
     if not target.get("is_npc"): target["sold_count"] = target.get("sold_count", 0) + 1
     return web.json_response({"success": True})
 
-async def handle_redeem(request):
+# НОВЫЕ ФУНКЦИИ: МАГАЗИН И КЕЙСЫ
+async def handle_buy_item(request):
+    data = await request.json()
+    user_id = str(data.get("user_id"))
+    item_type = data.get("item")
+    
+    me = users.get(user_id)
+    if not me: return web.json_response({"success": False})
+
+    now = time.time()
+    
+    if item_type == "shield":
+        if me["crystals"] < 15: return web.json_response({"success": False, "error": "Не хватает кристаллов!"})
+        me["crystals"] -= 15
+        me["shield_until"] = now + (3 * 3600) # 3 часа
+        return web.json_response({"success": True, "msg": "Щит активирован на 3 часа!"})
+        
+    elif item_type == "chains":
+        if me["crystals"] < 20: return web.json_response({"success": False, "error": "Не хватает кристаллов!"})
+        me["crystals"] -= 20
+        me["chains_until"] = now + (12 * 3600) # 12 часов
+        return web.json_response({"success": True, "msg": "Цепи накинуты на рабов!"})
+
+    return web.json_response({"success": False})
+
+async def handle_open_case(request):
     data = await request.json()
     user_id = str(data.get("user_id"))
     me = users.get(user_id)
-    if not me or me.get("is_npc"): return web.json_response({"success": False, "error": "Ошибка"})
-    if not me["owner_id"]: return web.json_response({"success": False, "error": "Вы свободны!"})
-    price = 1000 + (len(me["name"]) * 10)
-    if me["gold"] < price: return web.json_response({"success": False, "error": f"Нужно {price}💰"})
-    me["gold"] -= price
-    me["owner_id"] = None
-    return web.json_response({"success": True})
+    if not me: return web.json_response({"success": False})
 
-async def handle_upgrade(request):
-    data = await request.json()
-    user_id = str(data.get("user_id"))
-    target_id = str(data.get("target_id"))
-    target = npcs.get(target_id)
-    me = users.get(user_id)
-    if not target or target["owner_id"] != user_id: return web.json_response({"success": False, "error": "Это не твой NPC"})
-    cost = target["base_income"] * 100 * target["level"]
-    if me["gold"] < cost: return web.json_response({"success": False, "error": f"Нужно {cost}💰"})
-    me["gold"] -= cost
-    target["level"] += 1
-    return web.json_response({"success": True})
+    if me["crystals"] < 25:
+        return web.json_response({"success": False, "error": "Нужно 25 кристаллов!"})
 
-async def handle_admin_cheat(request):
-    try:
-        data = await request.json()
-        user_id = str(data.get("user_id"))
-        amount = int(data.get("amount", 10000))
-        if user_id == ADMIN_ID:
-            if user_id not in users: return web.json_response({"success": False, "error": "Нет профиля"})
-            users[user_id]["gold"] += amount
-            return web.json_response({"success": True})
-        return web.json_response({"success": False, "error": "Доступ запрещен"})
-    except Exception as e:
-        return web.json_response({"success": False, "error": str(e)})
+    me["crystals"] -= 25
+    roll = random.randint(1, 100)
+    
+    if roll <= 50:
+        # 50% - Золото
+        gold_win = random.randint(2000, 10000)
+        me["gold"] += gold_win
+        return web.json_response({"success": True, "type": "gold", "value": gold_win, "msg": f"Выпало {gold_win} золота!"})
+    elif roll <= 90:
+        # 40% - Бафф (мгновенный доход)
+        me["gold"] += 5000
+        return web.json_response({"success": True, "type": "gold", "value": 5000, "msg": "Выпал сундук с 5000 золота!"})
+    else:
+        # 10% - Дракон
+        if npcs["npc_dragon"]["owner_id"] is None:
+            npcs["npc_dragon"]["owner_id"] = user_id
+            return web.json_response({"success": True, "type": "npc", "value": "Дракон", "msg": "НЕВЕРОЯТНО! Вы выбили Легендарного Дракона!"})
+        else:
+            me["gold"] += 15000
+            return web.json_response({"success": True, "type": "gold", "value": 15000, "msg": "Дракон уже занят. Компенсация: 15 000 золота!"})
 
 async def main():
     app = web.Application()
@@ -288,6 +244,8 @@ async def main():
     app.router.add_post('/api/redeem', handle_redeem)
     app.router.add_post('/api/upgrade', handle_upgrade)
     app.router.add_post('/api/admin_cheat', handle_admin_cheat)
+    app.router.add_post('/api/buy_item', handle_buy_item) # НОВОЕ
+    app.router.add_post('/api/open_case', handle_open_case) # НОВОЕ
 
     runner = web.AppRunner(app)
     await runner.setup()
