@@ -20,19 +20,10 @@
         }
         
         * { box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            background: radial-gradient(circle at top right, #1a2436, #0f141e);
-            color: var(--text); margin: 0; padding-bottom: 80px; 
-            -webkit-tap-highlight-color: transparent; 
-        }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background: radial-gradient(circle at top right, #1a2436, #0f141e); color: var(--text); margin: 0; padding-bottom: 90px; -webkit-tap-highlight-color: transparent; }
 
         /* Шапка */
-        .header { 
-            background: rgba(15, 20, 30, 0.8); backdrop-filter: blur(10px); 
-            padding: 15px; display: flex; justify-content: space-between; align-items: center; 
-            position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05); 
-        }
+        .header { background: rgba(15, 20, 30, 0.8); backdrop-filter: blur(10px); padding: 15px; display: flex; justify-content: center; align-items: center; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .stats { display: flex; gap: 10px; font-weight: 700; font-size: 16px; }
         .stat-pill { display: flex; align-items: center; gap: 5px; background: var(--card); padding: 8px 14px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .gold { color: var(--gold); } .crystals { color: var(--purple); text-shadow: 0 0 10px var(--purple-glow); } .energy { color: var(--green); }
@@ -40,26 +31,32 @@
         .content { padding: 15px; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Нижнее меню */
+        /* Нижнее меню (5 вкладок) */
         .tabs { 
             display: flex; position: fixed; bottom: 0; width: 100%; 
             background: #151d29; border-top: 1px solid rgba(255,255,255,0.05); 
-            padding: 10px 0 calc(10px + env(safe-area-inset-bottom)) 0; 
-            justify-content: space-around; z-index: 10; 
+            padding: 10px 5px calc(10px + env(safe-area-inset-bottom)) 5px; 
+            justify-content: space-between; align-items: flex-end; z-index: 10; 
         }
-        .tab-btn { flex: 1; background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: color 0.2s; }
-        .tab-btn.active { color: var(--primary); }
-        .tab-icon { width: 26px; height: 26px; background-color: var(--text-muted); mask-size: contain; mask-repeat: no-repeat; mask-position: center; -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; }
-        .tab-btn.active .tab-icon { background-color: var(--primary); }
-        .tab-text { font-size: 11px; font-weight: 600; }
+        .tab-btn { 
+            flex: 1; background: transparent; border: none; color: var(--text-muted); cursor: pointer; 
+            display: flex; flex-direction: column; align-items: center; gap: 4px; 
+            transition: all 0.2s ease; padding: 5px 0;
+        }
+        .tab-btn.active { color: var(--primary); transform: translateY(-5px) scale(1.1); }
+        .tab-btn.active .tab-icon { background-color: var(--primary); filter: drop-shadow(0 0 8px var(--primary)); }
+        .tab-icon { width: 24px; height: 24px; background-color: var(--text-muted); mask-size: contain; mask-repeat: no-repeat; mask-position: center; -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; transition: all 0.2s; }
+        .tab-text { font-size: 10px; font-weight: 600; transition: all 0.2s; }
+        .tab-btn.active .tab-text { font-weight: 800; }
 
-        /* Карточки (Hamster Style) */
-        .card { 
-            background: linear-gradient(180deg, var(--card) 0%, #151d29 100%); 
-            border-radius: 20px; padding: 16px; margin-bottom: 12px; 
-            display: flex; justify-content: space-between; align-items: center; 
-            border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
+        /* Центральная кнопка Профиль (чуть больше) */
+        .tab-btn.profile-tab { position: relative; top: -10px; }
+        .tab-btn.profile-tab .tab-icon { width: 32px; height: 32px; background-color: #ffffff; }
+        .tab-btn.profile-tab.active .tab-icon { background-color: var(--primary); }
+        .tab-btn.profile-tab .tab-text { font-size: 11px; margin-top: 2px;}
+
+        /* Карточки */
+        .card { background: linear-gradient(180deg, var(--card) 0%, #151d29 100%); border-radius: 20px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
         .card-left { display: flex; align-items: center; gap: 15px; flex: 1; cursor: pointer; }
         .avatar { width: 50px; height: 50px; border-radius: 50%; background: #0f141e; object-fit: cover; border: 2px solid #2a3648; }
         
@@ -73,11 +70,7 @@
         .item-sub { font-size: 13px; color: var(--text-muted); font-weight: 500; }
 
         /* Кнопки */
-        .btn { 
-            padding: 12px 18px; border-radius: 14px; border: none; color: white; 
-            font-weight: 700; cursor: pointer; font-size: 14px; text-align: center; 
-            transition: all 0.2s; background: var(--primary); box-shadow: 0 4px 15px rgba(42, 171, 238, 0.3); 
-        }
+        .btn { padding: 12px 18px; border-radius: 14px; border: none; color: white; font-weight: 700; cursor: pointer; font-size: 14px; text-align: center; transition: all 0.2s; background: var(--primary); box-shadow: 0 4px 15px rgba(42, 171, 238, 0.3); }
         .btn:active { transform: scale(0.95); box-shadow: none;}
         .btn-green { background: var(--green); color: #000; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3); }
         .btn-red { background: var(--red); box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3); }
@@ -86,34 +79,24 @@
         .btn-icon { padding: 10px; border-radius: 14px; background: rgba(255,255,255,0.05); color: white; font-weight: bold; font-size: 16px; width: 44px; display: flex; justify-content: center; align-items: center;}
         .btn-full { width: 100%; padding: 18px; font-size: 18px; margin-bottom: 15px; border-radius: 20px; display: flex; justify-content: center; align-items: center; gap: 10px;}
         
-        /* Главная */
-        .income-block { 
-            text-align: center; 
-            background: linear-gradient(135deg, #1c2533 0%, #0f141e 100%); 
-            padding: 30px 20px; border-radius: 30px; margin-bottom: 20px; 
-            border: 1px solid rgba(245, 176, 65, 0.2); 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4), inset 0 0 20px rgba(245, 176, 65, 0.05); 
-        }
+        /* Профиль (Главная) */
+        .income-block { text-align: center; background: linear-gradient(135deg, #1c2533 0%, #0f141e 100%); padding: 30px 20px; border-radius: 30px; margin-bottom: 20px; border: 1px solid rgba(245, 176, 65, 0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.4), inset 0 0 20px rgba(245, 176, 65, 0.05); }
         .income-block h1 { margin: 0; font-size: 48px; color: var(--gold); font-weight: 900; text-shadow: 0 0 20px rgba(245, 176, 65, 0.4); }
         .income-block p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;}
 
         /* Магазин и Кейсы */
-        .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .shop-card { 
-            background: linear-gradient(180deg, var(--card) 0%, #151d29 100%); 
-            border-radius: 20px; padding: 20px; text-align: center; 
-            border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: space-between;
-        }
+        .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;}
+        .shop-card { background: linear-gradient(180deg, var(--card) 0%, #151d29 100%); border-radius: 20px; padding: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: space-between; }
         .shop-card h3 { margin: 0 0 5px 0; color: var(--text); font-size: 16px;}
         .shop-card p { color: var(--text-muted); font-size: 12px; margin-bottom: 15px; flex-grow: 1;}
         .shop-icon { font-size: 40px; margin-bottom: 10px; text-shadow: 0 0 15px rgba(255,255,255,0.2); }
         
         /* Анимация Кейса */
-        .case-container { text-align: center; padding: 20px 0; }
+        .case-container { text-align: center; padding: 20px 0; background: var(--card); border-radius: 20px; margin-bottom: 20px; border: 1px solid var(--purple); }
         .case-image { font-size: 100px; margin-bottom: 20px; animation: float 3s ease-in-out infinite; }
         @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
         
-        /* Модалка и уведомления */
+        /* Модалка */
         #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; width: 90%; max-width: 400px; }
         .toast { background: rgba(28, 37, 51, 0.95); backdrop-filter: blur(5px); color: white; padding: 16px 20px; border-radius: 16px; font-weight: 600; font-size: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; border: 1px solid rgba(255,255,255,0.1); }
         .toast.success { border-bottom: 4px solid var(--green); }
@@ -123,7 +106,6 @@
 
         .img-placeholder { background: #151d29; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: var(--text-muted); font-size: 20px; }
 
-        /* МОДАЛЬНОЕ ОКНО ПРОФИЛЯ */
         #modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 100; display: none; justify-content: center; align-items: flex-end; animation: fadeIn 0.2s ease; }
         .modal-content { background: #151d29; width: 100%; max-width: 500px; border-radius: 30px 30px 0 0; padding: 25px; animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-height: 85vh; overflow-y: auto; padding-bottom: calc(25px + env(safe-area-inset-bottom)); border-top: 2px solid var(--primary); }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -137,6 +119,9 @@
         .modal-stat-val { font-size: 22px; font-weight: 800; color: var(--gold); }
         .modal-stat-lbl { font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-top: 5px; font-weight: 700;}
         .modal-section-title { font-size: 18px; font-weight: 700; margin-bottom: 15px; color: var(--text); }
+
+        /* Стили для кланов */
+        .clan-card { background: var(--card); border-radius: 20px; padding: 20px; text-align: center; border: 1px dashed var(--primary); margin-bottom: 20px;}
     </style>
 </head>
 <body>
@@ -181,8 +166,57 @@
     </div>
 
     <div class="content">
-        <!-- 1. ГЛАВНАЯ -->
-        <div id="tab-home" style="display: block;">
+        <!-- 1. РЫНОК -->
+        <div id="tab-market" style="display: block;">
+            <h3 style="margin-top:0; font-weight:800; font-size:22px;">Невольничий рынок</h3>
+            <div id="market-list"></div>
+        </div>
+
+        <!-- 2. МАГАЗИН (с кейсами) -->
+        <div id="tab-shop" style="display: none;">
+            <h3 style="margin-top:0; font-weight:800; font-size:22px; text-align:center; margin-bottom:20px;">Королевский Магазин</h3>
+            
+            <!-- Кейс -->
+            <div class="case-container" style="padding: 30px 20px;">
+                <div class="case-image" style="font-size:80px;">🎁</div>
+                <h3 style="margin: 0; color: var(--purple); font-size: 24px;">Сундук Императора</h3>
+                <p style="color: var(--text-muted); font-size: 14px; margin: 10px 0 20px 0;">Шанс выбить Легендарного Дракона (500 💰/ч) или до 15 000 золота!</p>
+                <button class="btn btn-purple btn-full" onclick="openCase()" style="margin-bottom:0;">Купить и открыть (25 💎)</button>
+            </div>
+
+            <h4 style="margin-top:30px; font-weight:800; font-size:18px;">Усиления</h4>
+            <div class="shop-grid">
+                <div class="shop-card">
+                    <div class="shop-icon">🛡️</div>
+                    <h3>Щит</h3>
+                    <p>Защита от покупки (3ч)</p>
+                    <button class="btn btn-green" style="width:100%;" onclick="buyItem('shield')">15 💎</button>
+                </div>
+                <div class="shop-card">
+                    <div class="shop-icon">⛓️</div>
+                    <h3>Цепи</h3>
+                    <p>Рабы не выкупятся (12ч)</p>
+                    <button class="btn btn-gold" style="width:100%;" onclick="buyItem('chains')">20 💎</button>
+                </div>
+            </div>
+            
+            <h4 style="margin-top:30px; font-weight:800; font-size:18px;">Пополнение</h4>
+            <div class="shop-card" style="border-color: var(--purple);">
+                <h3>500 Кристаллов</h3>
+                <p>Хватит на 20 кейсов!</p>
+                <button class="btn btn-purple" style="width:100%;" onclick="buyStars()">Купить за 100 Stars</button>
+            </div>
+        </div>
+
+        <!-- 3. ПРОФИЛЬ (ГЛАВНАЯ) -->
+        <div id="tab-profile" style="display: none;">
+            <div class="profile-info" style="text-align: center; padding: 10px; margin-bottom: 20px;">
+                <img src="img/avatar_1.jpg" class="profile-avatar" style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--primary); object-fit: cover; margin: 0 auto 10px auto; box-shadow: 0 0 20px rgba(42, 171, 238, 0.3);" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="profile-avatar img-placeholder" style="width:90px; height:90px; display:none; margin: 0 auto 10px auto;">?</div>
+                <h2 id="profile-name" style="font-size: 24px; font-weight: 800; margin: 0;">Игрок</h2>
+                <div id="profile-id" style="font-size: 15px; color: var(--text-muted); margin-top: 5px; font-weight: 600;">ID: ...</div>
+            </div>
+
             <div class="income-block">
                 <h1><span id="income-per-hour">0</span></h1>
                 <p>Имперский доход в час</p>
@@ -194,81 +228,13 @@
             <button class="btn btn-full" style="background: var(--card); border: 1px solid rgba(255,255,255,0.1);" onclick="doWork()">🔨 Поработать на благо Империи</button>
             <button id="ad-btn" class="btn btn-full" style="background: var(--card); color: var(--primary); border: 1px solid var(--primary);" onclick="watchAd()">📺 Ярмарка (+250 💰)</button>
             <button id="ad-wait-btn" class="btn btn-full" style="display:none; background:var(--card); color:var(--text-muted); border:1px solid rgba(255,255,255,0.05);" disabled>Ярмарка закрыта (1 час)</button>
-        </div>
 
-        <!-- 2. РЫНОК -->
-        <div id="tab-market" style="display: none;">
-            <h3 style="margin-top:0; font-weight:800; font-size:22px;">Невольничий рынок</h3>
-            <div id="market-list"></div>
-        </div>
-
-        <!-- 3. ИМПЕРИЯ -->
-        <div id="tab-empire" style="display: none;">
-            <div id="owner-info" style="margin-bottom: 20px;"></div>
-            <h3 style="margin-top:0; font-weight:800; font-size:22px;">Мои подчиненные</h3>
+            <div id="owner-info" style="margin-top: 20px;"></div>
+            
+            <h3 style="margin-top:30px; font-weight:800; font-size:20px;">Мои подчиненные</h3>
             <div id="slaves-list"></div>
-        </div>
 
-        <!-- 4. КЕЙСЫ (НОВОЕ) -->
-        <div id="tab-cases" style="display: none;">
-            <h3 style="margin-top:0; font-weight:800; font-size:22px; text-align:center;">Имперские Сокровища</h3>
-            
-            <div class="case-container">
-                <div class="case-image">🎁</div>
-                <h2 style="margin: 0; color: var(--purple); font-size: 28px;">Сундук Императора</h2>
-                <p style="color: var(--text-muted); font-size: 15px; margin: 10px 0 25px 0;">Шанс выбить Легендарного Дракона (500 💰/ч) или до 15 000 золота!</p>
-                
-                <button class="btn btn-purple btn-full" onclick="openCase()">Открыть за 25 💎</button>
-            </div>
-        </div>
-
-        <!-- 5. МАГАЗИН -->
-        <div id="tab-shop" style="display: none;">
-            <h3 style="margin-top:0; font-weight:800; font-size:22px; text-align:center; margin-bottom:20px;">Королевский Магазин</h3>
-            
-            <div class="shop-grid">
-                <div class="shop-card">
-                    <div class="shop-icon">🛡️</div>
-                    <h3>Имперский Щит</h3>
-                    <p>Защита от покупки на 3 часа</p>
-                    <button class="btn btn-green" style="width:100%;" onclick="buyItem('shield')">15 💎</button>
-                </div>
-                
-                <div class="shop-card">
-                    <div class="shop-icon">⛓️</div>
-                    <h3>Цепи</h3>
-                    <p>Рабы не смогут выкупиться 12 ч.</p>
-                    <button class="btn btn-gold" style="width:100%;" onclick="buyItem('chains')">20 💎</button>
-                </div>
-            </div>
-
-            <h3 style="margin-top:30px; font-weight:800; font-size:22px; text-align:center; margin-bottom:20px;">Пополнить баланс</h3>
-            <div class="shop-card" style="border-color: var(--purple);">
-                <h3>500 Кристаллов</h3>
-                <p>Хватит на 20 кейсов!</p>
-                <button class="btn btn-purple" style="width:100%;" onclick="buyStars()">Купить за 100 Stars</button>
-            </div>
-        </div>
-
-        <!-- 6. РЕЙТИНГ -->
-        <div id="tab-rating" style="display: none;">
-            <select id="lb-sort" class="select-custom" onchange="renderLeaderboard()" style="width: 100%; padding: 15px; margin-bottom: 20px; border-radius: 16px; background: var(--card); color: white; border: none; font-size: 15px; font-weight: 600; outline: none; appearance: none;">
-                <option value="gold">🏆 Топ-100 по богатству</option>
-                <option value="income">📈 Топ-100 по доходу в час</option>
-            </select>
-            <div id="leaderboard"></div>
-        </div>
-
-        <!-- 7. ПРОФИЛЬ -->
-        <div id="tab-profile" style="display: none;">
-            <div class="profile-info" style="text-align: center; padding: 20px; margin-bottom: 20px;">
-                <img src="img/avatar_1.jpg" class="profile-avatar" style="width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--primary); object-fit: cover; margin: 0 auto 15px auto; box-shadow: 0 0 20px rgba(42, 171, 238, 0.3);" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <div class="profile-avatar img-placeholder" style="width:100px; height:100px; display:none; margin: 0 auto 15px auto;">?</div>
-                <h2 id="profile-name" style="font-size: 24px; font-weight: 800; margin: 0;">Игрок</h2>
-                <div id="profile-id" style="font-size: 15px; color: var(--text-muted); margin-top: 5px; font-weight: 600;">ID: ...</div>
-            </div>
-            
-            <div class="card" style="flex-direction: column; align-items: stretch; padding: 0;">
+            <div class="card" style="flex-direction: column; align-items: stretch; padding: 0; margin-top:20px;">
                 <div class="stat-row" style="display: flex; justify-content: space-between; padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 16px; font-weight: 600;"><span style="color: var(--text-muted);">Приглашено друзей:</span> <b id="stat-ref">0</b></div>
                 <div class="stat-row" style="display: flex; justify-content: space-between; padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 16px; font-weight: 600;"><span style="color: var(--text-muted);">Куплено рабов:</span> <b id="stat-bought">0</b></div>
                 <div class="stat-row" style="display: flex; justify-content: space-between; padding: 18px; font-size: 16px; font-weight: 600;"><span style="color: var(--text-muted);">Раз продан:</span> <b id="stat-sold">0</b></div>
@@ -280,19 +246,46 @@
             <div id="admin-panel" style="margin-top: 20px; padding: 15px; border: 2px dashed var(--purple); border-radius: 20px; display:none;">
                 <h4 style="margin-top:0; color:var(--purple); text-align:center;">Панель Владельца</h4>
                 <button class="btn btn-purple btn-full" onclick="cheatMoney()">Накинуть 10 000 💰</button>
+                <button class="btn btn-purple btn-full" onclick="cheatCrystals()" style="background: #8e44ad;">Накинуть 100 💎</button>
             </div>
+        </div>
+
+        <!-- 4. РЕЙТИНГ -->
+        <div id="tab-rating" style="display: none;">
+            <h3 style="margin-top:0; font-weight:800; font-size:22px;">Зал Славы</h3>
+            <select id="lb-sort" onchange="renderLeaderboard()" style="width: 100%; padding: 15px; margin-bottom: 20px; border-radius: 16px; background: var(--card); color: white; border: none; font-size: 15px; font-weight: 600; outline: none; appearance: none;">
+                <option value="gold">🏆 Топ-100 по богатству</option>
+                <option value="income">📈 Топ-100 по доходу в час</option>
+            </select>
+            <div id="leaderboard"></div>
+        </div>
+
+        <!-- 5. ИМПЕРИИ (КЛАНЫ) -->
+        <div id="tab-empire" style="display: none;">
+            <h3 style="margin-top:0; font-weight:800; font-size:22px; text-align:center;">Великие Империи</h3>
+            
+            <div class="clan-card">
+                <div class="shop-icon" style="font-size: 60px;">🏰</div>
+                <h3>Создайте свою Империю</h3>
+                <p style="color: var(--text-muted); margin-bottom: 20px;">Объединяйтесь с другими игроками, защищайте друг друга и участвуйте в глобальных ивентах.</p>
+                <button class="btn btn-primary btn-full" onclick="showToast('Создание Империй появится в следующем обновлении!');">Создать Империю (500 💎)</button>
+            </div>
+            
+            <h4 style="margin-top:30px; font-weight:800; font-size:18px;">Топ Империй</h4>
+            <div class="card" style="justify-content: center; color: var(--text-muted);">Пока пусто...</div>
         </div>
     </div>
 
-    <!-- НИЖНЕЕ МЕНЮ -->
+    <!-- НИЖНЕЕ МЕНЮ (5 кнопок) -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('home', this)"><div class="tab-icon" style="mask-image: url('img/icon_home.svg'); -webkit-mask-image: url('img/icon_home.svg');"></div><span class="tab-text">Главная</span></button>
-        <button class="tab-btn" onclick="switchTab('market', this)"><div class="tab-icon" style="mask-image: url('img/icon_market.svg'); -webkit-mask-image: url('img/icon_market.svg');"></div><span class="tab-text">Рынок</span></button>
-        <button class="tab-btn" onclick="switchTab('empire', this)"><div class="tab-icon" style="mask-image: url('img/icon_empire.svg'); -webkit-mask-image: url('img/icon_empire.svg');"></div><span class="tab-text">Империя</span></button>
-        <button class="tab-btn" onclick="switchTab('cases', this)"><div class="tab-icon" style="mask-image: url('img/icon_case.svg'); -webkit-mask-image: url('img/icon_case.svg');"></div><span class="tab-text">Кейсы</span></button>
+        <button class="tab-btn active" onclick="switchTab('market', this)"><div class="tab-icon" style="mask-image: url('img/icon_market.svg'); -webkit-mask-image: url('img/icon_market.svg');"></div><span class="tab-text">Рынок</span></button>
         <button class="tab-btn" onclick="switchTab('shop', this)"><div class="tab-icon" style="mask-image: url('img/icon_shop.svg'); -webkit-mask-image: url('img/icon_shop.svg');"></div><span class="tab-text">Магазин</span></button>
+        
+        <!-- Центральная кнопка Профиль -->
+        <button class="tab-btn profile-tab" onclick="switchTab('profile', this)"><div class="tab-icon" style="mask-image: url('img/icon_profile.svg'); -webkit-mask-image: url('img/icon_profile.svg');"></div><span class="tab-text">Профиль</span></button>
+        
         <button class="tab-btn" onclick="switchTab('rating', this)"><div class="tab-icon" style="mask-image: url('img/icon_rating.svg'); -webkit-mask-image: url('img/icon_rating.svg');"></div><span class="tab-text">Рейтинг</span></button>
-        <button class="tab-btn" onclick="switchTab('profile', this)"><div class="tab-icon" style="mask-image: url('img/icon_profile.svg'); -webkit-mask-image: url('img/icon_profile.svg');"></div><span class="tab-text">Профиль</span></button>
+        <button class="tab-btn" onclick="switchTab('empire', this)"><div class="tab-icon" style="mask-image: url('img/icon_empire.svg'); -webkit-mask-image: url('img/icon_empire.svg');"></div><span class="tab-text">Империи</span></button>
     </div>
 
     <script>
@@ -329,7 +322,7 @@
         }
 
         function switchTab(tab, btn) {
-            ['home', 'market', 'empire', 'cases', 'shop', 'rating', 'profile'].forEach(t => {
+            ['market', 'shop', 'profile', 'rating', 'empire'].forEach(t => {
                 const el = document.getElementById(`tab-${t}`);
                 if(el) el.style.display = t === tab ? 'block' : 'none';
             });
@@ -409,7 +402,7 @@
                     marketList.appendChild(div);
                 });
 
-                // Империя
+                // Империя (Мои рабы)
                 const slavesList = document.getElementById('slaves-list');
                 slavesList.innerHTML = '';
                 if (data.my_slaves.length === 0) slavesList.innerHTML = '<p style="color:var(--text-muted); text-align:center; margin-top:20px;">Пусто.</p>';
@@ -580,7 +573,6 @@
             tg.openTelegramLink(shareUrl);
         }
 
-        // ... Остальные функции (watchAd, claimDaily, collectIncome, doWork, buyPlayer, upgradeNpc, redeemSelf, cheatMoney) оставляем без изменений ...
         async function watchAd() {
             const btn = document.getElementById('ad-btn');
             btn.innerText = "Загрузка...";
@@ -629,9 +621,14 @@
             if (data.success) { tg.HapticFeedback.notificationOccurred('success'); showToast('Ты свободен!'); loadState(userName); } else showToast(data.error, 'error');
         }
         async function cheatMoney() {
-            const res = await fetch('/api/admin_cheat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, amount: 10000 }) });
+            const res = await fetch('/api/admin_cheat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, amount: 10000, type: "gold" }) });
             const data = await res.json();
             if (data.success) { showToast('+10 000 монет!'); loadState(userName); } else showToast(data.error, 'error');
+        }
+        async function cheatCrystals() {
+            const res = await fetch('/api/admin_cheat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, amount: 100, type: "crystals" }) });
+            const data = await res.json();
+            if (data.success) { showToast('+100 кристаллов!'); loadState(userName); } else showToast(data.error, 'error');
         }
     </script>
 </body>
