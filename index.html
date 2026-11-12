@@ -6,23 +6,11 @@
     <title>Империя</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { 
-            --bg: #0f141e; 
-            --card: #1c2533; 
-            --text: #ffffff; 
-            --text-muted: #8b9bb4;
-            --primary: #2AABEE; 
-            --gold: #F5B041;
-            --green: #2ECC71;
-            --red: #E74C3C;
-            --purple: #9b59b6;
-            --purple-glow: rgba(155, 89, 182, 0.4);
-        }
-        
+        :root { --bg: #0f141e; --card: #1c2533; --text: #ffffff; --text-muted: #8b9bb4; --primary: #2AABEE; --gold: #F5B041; --green: #2ECC71; --red: #E74C3C; --purple: #9b59b6; --purple-glow: rgba(155, 89, 182, 0.4); }
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Roboto, sans-serif; background: radial-gradient(circle at top right, #1a2436, #0f141e); color: var(--text); margin: 0; padding-bottom: 80px; -webkit-tap-highlight-color: transparent; }
 
-        /* --- РАМКИ ПРОФИЛЯ --- */
+        /* РАМКИ */
         .frame-basic { border: 3px solid #2a3648; }
         .frame-fire { border: 3px solid #ff4500; box-shadow: 0 0 15px #ff4500; }
         .frame-neon { border: 3px solid #00ffff; box-shadow: 0 0 15px #00ffff; }
@@ -52,11 +40,7 @@
         .card-left { display: flex; align-items: center; gap: 15px; flex: 1; cursor: pointer; }
         .avatar { width: 50px; height: 50px; border-radius: 50%; background: #0f141e; object-fit: cover; }
         
-        .rarity-Обычный { border-left: 4px solid #7A8A9E; } 
-        .rarity-Редкий { border-left: 4px solid var(--primary); } 
-        .rarity-Эпический { border-left: 4px solid var(--purple); } 
-        .rarity-Легендарный { border-left: 4px solid var(--gold); box-shadow: 0 0 15px rgba(245, 176, 65, 0.2); }
-        .rarity-Игрок { border-left: 4px solid var(--primary); }
+        .rarity-Обычный { border-left: 4px solid #7A8A9E; } .rarity-Редкий { border-left: 4px solid var(--primary); } .rarity-Эпический { border-left: 4px solid var(--purple); } .rarity-Легендарный { border-left: 4px solid var(--gold); box-shadow: 0 0 15px rgba(245, 176, 65, 0.2); } .rarity-Игрок { border-left: 4px solid var(--primary); }
 
         .item-title { font-size: 16px; font-weight: 700; margin-bottom: 4px;}
         .item-sub { font-size: 13px; color: var(--text-muted); font-weight: 500; }
@@ -68,10 +52,10 @@
         .btn-red { background: var(--red); box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3); }
         .btn-purple { background: var(--purple); box-shadow: 0 4px 15px var(--purple-glow); }
         .btn-gold { background: var(--gold); color: #000; box-shadow: 0 4px 15px rgba(245, 176, 65, 0.3); }
-        .btn-icon { padding: 10px; border-radius: 14px; background: rgba(255,255,255,0.05); color: white; font-weight: bold; font-size: 16px; width: 44px; display: flex; justify-content: center; align-items: center;}
+        .btn-icon { padding: 10px; border-radius: 14px; background: rgba(255,255,255,0.05); color: white; font-weight: bold; font-size: 16px; display: flex; justify-content: center; align-items: center;}
         .btn-full { width: 100%; padding: 18px; font-size: 18px; margin-bottom: 15px; border-radius: 20px; display: flex; justify-content: center; align-items: center; gap: 10px;}
         
-        /* Профиль (Главная) */
+        /* Профиль */
         .income-block { text-align: center; background: linear-gradient(135deg, #1c2533 0%, #0f141e 100%); padding: 30px 20px; border-radius: 30px; margin-bottom: 20px; border: 1px solid rgba(245, 176, 65, 0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.4), inset 0 0 20px rgba(245, 176, 65, 0.05); }
         .income-block h1 { margin: 0; font-size: 48px; color: var(--gold); font-weight: 900; text-shadow: 0 0 20px rgba(245, 176, 65, 0.4); }
         .income-block p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;}
@@ -100,7 +84,7 @@
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 100; display: none; justify-content: center; align-items: center; animation: fadeIn 0.2s ease; }
         .modal-content { background: #151d29; width: 90%; max-width: 400px; border-radius: 30px; padding: 25px; position: relative; text-align: center; border: 2px solid var(--primary); }
         
-        /* Модалка открытия кейса */
+        /* Модалка кейса */
         .case-opening-modal { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px;}
         .case-spinner { font-size: 80px; animation: spin 0.5s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(1.2); } 100% { transform: rotate(360deg) scale(1); } }
@@ -112,15 +96,25 @@
         /* Кастомизация */
         .custom-frame-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
         .custom-frame-item { width: 60px; height: 60px; border-radius: 50%; background: #0f141e; margin: 0 auto; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 10px; color: #fff; overflow: hidden;}
-        
         .color-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
         .color-item { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
         .color-item.active { border-color: white; }
+        
+        .img-placeholder { background: #151d29; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: var(--text-muted); font-size: 20px; }
     </style>
 </head>
 <body>
-
     <div id="toast-container"></div>
+
+    <!-- МОДАЛКА ИНФО О КЕЙСЕ -->
+    <div id="case-info-modal" class="modal-overlay">
+        <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
+            <button class="modal-close" onclick="closeCaseInfo()">×</button>
+            <h2 style="margin-top:0; text-align:center;">Содержимое Сундука</h2>
+            <p style="color:var(--text-muted); font-size:14px; text-align:center; margin-bottom:20px;">Шансы выпадения предметов</p>
+            <div id="case-loot-list"></div>
+        </div>
+    </div>
 
     <!-- МОДАЛКА ОТКРЫТИЯ КЕЙСА -->
     <div id="case-modal" class="modal-overlay">
@@ -138,7 +132,6 @@
         <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
             <button class="modal-close" onclick="closeCustom()">×</button>
             <h2 style="margin-top:0;">Кастомизация</h2>
-            
             <h4 style="text-align:left; margin-bottom:10px;">Цвет ника (5 💎)</h4>
             <div class="color-grid">
                 <div class="color-item" style="background:#ffffff;" onclick="changeColor('#ffffff', this)"></div>
@@ -147,12 +140,8 @@
                 <div class="color-item" style="background:#2AABEE;" onclick="changeColor('#2AABEE', this)"></div>
                 <div class="color-item" style="background:#9b59b6;" onclick="changeColor('#9b59b6', this)"></div>
             </div>
-
             <h4 style="text-align:left; margin-bottom:10px;">Твои рамки</h4>
-            <div id="my-frames-grid" class="custom-frame-grid">
-                <!-- Сюда рендерятся рамки -->
-            </div>
-
+            <div id="my-frames-grid" class="custom-frame-grid"></div>
             <h4 style="text-align:left; margin-bottom:10px;">Магазин рамок</h4>
             <div class="shop-grid" style="grid-template-columns: 1fr 1fr;">
                 <div class="shop-card" style="padding:10px;">
@@ -213,7 +202,7 @@
             <div id="market-list"></div>
         </div>
 
-        <!-- 2. МАГАЗИН (с кейсами) -->
+        <!-- 2. МАГАЗИН -->
         <div id="tab-shop" style="display: none;">
             <h3 style="margin-top:0; font-weight:800; font-size:22px; text-align:center; margin-bottom:20px;">Королевский Магазин</h3>
             
@@ -221,7 +210,10 @@
                 <div class="case-image" style="font-size:80px;">🎁</div>
                 <h3 style="margin: 0; color: var(--purple); font-size: 24px;">Сундук Императора</h3>
                 <p style="color: var(--text-muted); font-size: 14px; margin: 10px 0 20px 0;">Золото, Рамки, Щиты, Цепи и шанс выбить Дракона!</p>
-                <button class="btn btn-purple btn-full" onclick="openCase()" style="margin-bottom:0;">Купить и открыть (25 💎)</button>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button class="btn btn-icon" onclick="openCaseInfo()" style="width: auto; padding: 10px 20px; background: rgba(255,255,255,0.1);">ℹ️</button>
+                    <button class="btn btn-purple" onclick="openCase()" style="flex: 1;">Купить и открыть (25 💎)</button>
+                </div>
             </div>
 
             <h4 style="margin-top:30px; font-weight:800; font-size:18px;">Усиления</h4>
@@ -248,12 +240,10 @@
             </div>
         </div>
 
-        <!-- 3. ПРОФИЛЬ (ГЛАВНАЯ) -->
+        <!-- 3. ПРОФИЛЬ -->
         <div id="tab-profile" style="display: none;">
             <div class="profile-info" style="text-align: center; padding: 10px; margin-bottom: 20px; position: relative;">
-                <!-- Кнопка кастомизации -->
                 <button onclick="openCustom()" style="position: absolute; right: 10px; top: 10px; background: var(--card); border: 1px solid var(--purple); border-radius: 12px; padding: 8px 12px; color: white; font-weight: bold; cursor: pointer;">🎨</button>
-                
                 <img id="my-profile-avatar" src="img/avatar_1.jpg" class="profile-avatar frame-basic" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin: 0 auto 10px auto;" onerror="this.style.display='none';">
                 <h2 id="profile-name" style="font-size: 24px; font-weight: 800; margin: 0; color: #ffffff;">Игрок</h2>
                 <div id="profile-id" style="font-size: 15px; color: var(--text-muted); margin-top: 5px; font-weight: 600;">ID: ...</div>
@@ -302,7 +292,7 @@
             <div id="leaderboard"></div>
         </div>
 
-        <!-- 5. ИМПЕРИИ (КЛАНЫ) -->
+        <!-- 5. ИМПЕРИИ -->
         <div id="tab-empire" style="display: none;">
             <h3 style="margin-top:0; font-weight:800; font-size:22px; text-align:center;">Великие Империи</h3>
             <div class="clan-card" style="background: var(--card); border-radius: 20px; padding: 20px; text-align: center; border: 1px dashed var(--primary); margin-bottom: 20px;">
@@ -404,16 +394,13 @@
                 pName.innerText = data.my_name;
                 pName.style.color = myNameColor;
                 document.getElementById('profile-id').innerText = `ID: ${data.my_game_id}`;
-                
-                const pAvatar = document.getElementById('my-profile-avatar');
-                pAvatar.className = `profile-avatar ${myFrame}`;
+                document.getElementById('my-profile-avatar').className = `profile-avatar ${myFrame}`;
 
                 document.getElementById('stat-ref').innerText = data.ref_count;
                 document.getElementById('stat-bought').innerText = data.bought_count;
                 document.getElementById('stat-sold').innerText = data.sold_count;
                 if (data.is_admin) document.getElementById('admin-panel').style.display = 'block';
 
-                // Рынок
                 const marketList = document.getElementById('market-list');
                 marketList.innerHTML = '';
                 if(data.market.length === 0) marketList.innerHTML = "<p style='color:var(--text-muted); text-align:center; margin-top:20px;'>Пока никого нет.</p>";
@@ -449,7 +436,6 @@
                     marketList.appendChild(div);
                 });
 
-                // Империя (Мои рабы)
                 const slavesList = document.getElementById('slaves-list');
                 slavesList.innerHTML = '';
                 if (data.my_slaves.length === 0) slavesList.innerHTML = '<p style="color:var(--text-muted); text-align:center; margin-top:20px;">Пусто.</p>';
@@ -484,7 +470,6 @@
                     slavesList.appendChild(div);
                 });
 
-                // Владелец
                 const ownerInfo = document.getElementById('owner-info');
                 if (data.my_owner) {
                     ownerInfo.innerHTML = `<div class="card" style="border-left-color:var(--red); flex-direction:column; align-items:flex-start; padding:20px;">
@@ -576,7 +561,32 @@
         function closeProfile(event) { document.getElementById('modal-overlay').style.display = 'none'; currentModalTargetId = null; }
         function buyFromModal() { if (currentModalTargetId) { closeProfile(); buyPlayer(currentModalTargetId); } }
 
-        // --- КЕЙС И КАСТОМИЗАЦИЯ ---
+        async function openCaseInfo() {
+            const res = await fetch('/api/case_info');
+            const data = await res.json();
+            const list = document.getElementById('case-loot-list');
+            list.innerHTML = '';
+            
+            data.loot.forEach(item => {
+                let color = "var(--text)";
+                if (item.chance <= 5) color = "var(--gold)";
+                else if (item.chance <= 15) color = "var(--purple)";
+                
+                list.innerHTML += `
+                    <div class="card" style="padding: 12px; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <span style="font-size:24px;">${item.icon}</span>
+                            <b style="color:${color}">${item.name}</b>
+                        </div>
+                        <span style="font-weight:800; font-size:16px;">${item.chance}%</span>
+                    </div>
+                `;
+            });
+            document.getElementById('case-info-modal').style.display = 'flex';
+        }
+
+        function closeCaseInfo() { document.getElementById('case-info-modal').style.display = 'none'; }
+
         async function openCase() {
             const caseModal = document.getElementById('case-modal');
             const spinner = document.getElementById('case-spinner');
@@ -592,7 +602,6 @@
             const res = await fetch('/api/open_case', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
             const data = await res.json();
 
-            // Анимация 3 секунды
             setTimeout(() => {
                 spinner.style.display = 'none';
                 if (data.success) {
@@ -613,13 +622,7 @@
         function openCustom() {
             const grid = document.getElementById('my-frames-grid');
             grid.innerHTML = '';
-            
-            // Базовые и выбитые рамки
-            const frames = [
-                {id: "frame_basic", name: "База"}, 
-                ...myInventory.map(f => ({id: f, name: f.replace('frame_', '')}))
-            ];
-
+            const frames = [{id: "frame_basic", name: "База"}, ...myInventory.map(f => ({id: f, name: f.replace('frame_', '')}))];
             frames.forEach(f => {
                 const div = document.createElement('div');
                 div.className = `custom-frame-item ${f.id}`;
@@ -627,7 +630,6 @@
                 div.onclick = () => equipFrame(f.id);
                 grid.appendChild(div);
             });
-
             document.getElementById('custom-modal').style.display = 'flex';
         }
 
@@ -643,12 +645,7 @@
         async function changeColor(color, el) {
             const res = await fetch('/api/change_color', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, color: color }) });
             const data = await res.json();
-            if (data.success) { 
-                showToast(data.msg); 
-                loadState(userName);
-                document.querySelectorAll('.color-item').forEach(c => c.classList.remove('active'));
-                el.classList.add('active');
-            } 
+            if (data.success) { showToast(data.msg); loadState(userName); document.querySelectorAll('.color-item').forEach(c => c.classList.remove('active')); el.classList.add('active'); } 
             else showToast(data.error, 'error');
         }
 
@@ -659,7 +656,6 @@
             else showToast(data.error, 'error');
         }
 
-        // --- ОСТАЛЬНЫЕ ФУНКЦИИ ---
         async function buyItem(item) {
             const res = await fetch('/api/buy_item', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, item: item }) });
             const data = await res.json();
