@@ -7,7 +7,6 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command, CommandObject
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
-# --- НАСТРОЙКИ ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 ADMIN_ID = str(os.environ.get("ADMIN_ID", ""))
 WEB_URL = "https://slaves-game.onrender.com" 
@@ -19,7 +18,7 @@ if not BOT_TOKEN:
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# --- БАЗА ДАННЫХ (В ПАМЯТИ) ---
+# --- БАЗА ДАННЫХ ---
 users = {}
 npcs = {
     "npc_1": {"name": "🧑‍🌾 Крестьянин", "rarity": "Обычный", "price": 500, "base_income": 10, "level": 1, "owner_id": None, "is_npc": True},
@@ -27,6 +26,18 @@ npcs = {
     "npc_3": {"name": "🧙‍♂️ Маг", "rarity": "Эпический", "price": 3000, "base_income": 100, "level": 1, "owner_id": None, "is_npc": True},
     "npc_dragon": {"name": "🐉 Дракон", "rarity": "Легендарный", "price": 0, "base_income": 500, "level": 1, "owner_id": None, "is_npc": True}
 }
+
+# Таблица выпадения из кейса (Сундук Императора - 25💎)
+CASE_LOOT = [
+    {"type": "gold", "value": 5000, "weight": 40, "msg": "Выпало 5 000 золота!"},
+    {"type": "gold", "value": 10000, "weight": 20, "msg": "Выпало 10 000 золота!"},
+    {"type": "income_10h", "weight": 15, "msg": "Выпал доход за 10 часов!"},
+    {"type": "frame", "value": "frame_fire", "weight": 10, "msg": "Выпала Рамка 'Огонь'!"},
+    {"type": "frame", "value": "frame_neon", "weight": 8, "msg": "Выпала Рамка 'Неон'!"},
+    {"type": "item", "value": "shield", "weight": 4, "msg": "Выпал Имперский Щит!"},
+    {"type": "item", "value": "chains", "weight": 2, "msg": "Выпали Цепи!"},
+    {"type": "npc", "value": "npc_dragon", "weight": 1, "msg": "НЕВЕРОЯТНО! Вы выбили Легендарного Дракона!"}
+]
 
 def create_user(user_id, name, referrer_id=None):
     if user_id not in users:
@@ -48,7 +59,9 @@ def create_user(user_id, name, referrer_id=None):
             "last_energy_update": time.time(), "owner_id": None, 
             "last_collected": time.time(), "last_daily": 0,
             "last_ad_watch": 0, "ref_count": 0, "bought_count": 0, "sold_count": 0,
-            "game_id": fake_id, "shield_until": 0, "chains_until": 0
+            "game_id": fake_id, "shield_until": 0, "chains_until": 0,
+            "frame": "frame_basic", "name_color": "#ffffff", # Кастомизация
+            "inventory": [] # Выбитые рамки
         }
     return users[user_id]
 
@@ -119,9 +132,9 @@ async def handle_state(request):
     market = []
     for uid, u in users.items():
         if uid != user_id:
-            market.append({"id": uid, "name": u["name"], "owner_id": u["owner_id"], "price": 1000 + (len(u["name"]) * 10), "rarity": "Игрок", "is_npc": False, "game_id": u["game_id"], "shield": u.get("shield_until", 0) > now})
+            market.append({"id": uid, "name": u["name"], "owner_id": u["owner_id"], "price": 1000 + (len(u["name"]) * 10), "rarity": "Игрок", "is_npc": False, "game_id": u["game_id"], "shield": u.get("shield_until", 0) > now, "frame": u.get("frame", "frame_basic"), "name_color": u.get("name_color", "#ffffff")})
     for uid, n in npcs.items():
-        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True, "game_id": None, "shield": False})
+        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True, "game_id": None, "shield": False, "frame": "frame_basic", "name_color": "#ffffff"})
 
     my_owner = None
     if me["owner_id"] and me["owner_id"] in all_entities:
@@ -139,8 +152,12 @@ async def handle_state(request):
         "my_name": me["name"], "my_game_id": me["game_id"],
         "ref_count": me.get("ref_count", 0),
         "bought_count": me.get("bought_count", 0), "sold_count": me.get("sold_count", 0),
-        "bot_username": bot_info.username
+        "bot_username": bot_info.username,
+        "my_frame": me.get("frame", "frame_basic"), "my_name_color": me.get("name_color", "#ffffff"),
+        "my_inventory": me.get("inventory", [])
     })
+
+# ... (остальные функции handle_user_info, handle_collect, handle_work, handle_daily, handle_watch_ad, handle_buy, handle_redeem, handle_upgrade, handle_admin_cheat, handle_buy_item остаются БЕЗ ИЗМЕНЕНИЙ, скопируй их из предыдущего кода) ...
 
 async def handle_user_info(request):
     target_id = request.query.get("target_id")
@@ -162,7 +179,7 @@ async def handle_user_info(request):
     target_owner_name = None
     if target_user["owner_id"] and target_user["owner_id"] in all_entities:
         target_owner_name = all_entities[target_user["owner_id"]]["name"]
-    return web.json_response({"name": target_user["name"], "gold": target_user["gold"], "income": target_income, "slaves": target_slaves, "owner_name": target_owner_name, "id": target_id, "game_id": target_user["game_id"]})
+    return web.json_response({"name": target_user["name"], "gold": target_user["gold"], "income": target_income, "slaves": target_slaves, "owner_name": target_owner_name, "id": target_id, "game_id": target_user["game_id"], "frame": target_user.get("frame", "frame_basic"), "name_color": target_user.get("name_color", "#ffffff")})
 
 async def handle_collect(request):
     data = await request.json()
@@ -311,22 +328,100 @@ async def handle_open_case(request):
     if me["crystals"] < 25: return web.json_response({"success": False, "error": "Нужно 25 кристаллов!"})
 
     me["crystals"] -= 25
-    roll = random.randint(1, 100)
     
-    if roll <= 50:
-        gold_win = random.randint(2000, 10000)
-        me["gold"] += gold_win
-        return web.json_response({"success": True, "type": "gold", "value": gold_win, "msg": f"Выпало {gold_win} золота!"})
-    elif roll <= 90:
-        me["gold"] += 5000
-        return web.json_response({"success": True, "type": "gold", "value": 5000, "msg": "Выпал сундук с 5000 золота!"})
-    else:
+    # Взвешенный рандом
+    total_weight = sum(item["weight"] for item in CASE_LOOT)
+    rand_val = random.uniform(0, total_weight)
+    current_weight = 0
+    selected_loot = CASE_LOOT[0]
+
+    for item in CASE_LOOT:
+        current_weight += item["weight"]
+        if rand_val <= current_weight:
+            selected_loot = item
+            break
+
+    # Выдача награды
+    loot_msg = selected_loot["msg"]
+    loot_type = selected_loot["type"]
+    
+    if loot_type == "gold":
+        me["gold"] += selected_loot["value"]
+    elif loot_type == "income_10h":
+        # Считаем доход за 10 часов
+        income_per_hour = 0
+        for u in {**users, **npcs}.values():
+            if u["owner_id"] == user_id: income_per_hour += (u["base_income"] * u["level"]) if u.get("is_npc") else 50
+        if income_per_hour == 0: income_per_hour = 50 # Минималка
+        me["gold"] += income_per_hour * 10
+    elif loot_type == "frame":
+        if selected_loot["value"] not in me["inventory"]:
+            me["inventory"].append(selected_loot["value"])
+    elif loot_type == "item":
+        if selected_loot["value"] == "shield":
+            me["shield_until"] = time.time() + (3 * 3600)
+        elif selected_loot["value"] == "chains":
+            me["chains_until"] = time.time() + (12 * 3600)
+    elif loot_type == "npc":
         if npcs["npc_dragon"]["owner_id"] is None:
             npcs["npc_dragon"]["owner_id"] = user_id
-            return web.json_response({"success": True, "type": "npc", "value": "Дракон", "msg": "НЕВЕРОЯТНО! Вы выбили Легендарного Дракона!"})
         else:
             me["gold"] += 15000
-            return web.json_response({"success": True, "type": "gold", "value": 15000, "msg": "Дракон уже занят. Компенсация: 15 000 золота!"})
+            loot_msg = "Дракон уже занят. Компенсация: 15 000 золота!"
+
+    return web.json_response({"success": True, "msg": loot_msg})
+
+# НОВЫЕ ФУНКЦИИ КАСТОМИЗАЦИИ
+async def handle_equip_frame(request):
+    data = await request.json()
+    user_id = str(data.get("user_id"))
+    frame = data.get("frame")
+    me = users.get(user_id)
+    if me and (frame in me["inventory"] or frame == "frame_basic"):
+        me["frame"] = frame
+        return web.json_response({"success": True, "msg": "Рамка надета!"})
+    return web.json_response({"success": False, "error": "Рамка не найдена"})
+
+async def handle_change_color(request):
+    data = await request.json()
+    user_id = str(data.get("user_id"))
+    color = data.get("color")
+    cost = 5 # Стоимость смены цвета в кристаллах
+    
+    me = users.get(user_id)
+    if me["crystals"] < cost:
+        return web.json_response({"success": False, "error": f"Нужно {cost} 💎"})
+    
+    me["crystals"] -= cost
+    me["name_color"] = color
+    return web.json_response({"success": True, "msg": "Цвет изменен!"})
+
+async def handle_buy_frame(request):
+    data = await request.json()
+    user_id = str(data.get("user_id"))
+    frame = data.get("frame")
+    currency = data.get("currency")
+    
+    me = users.get(user_id)
+    frames_db = {
+        "frame_gold": {"price": 50, "currency": "crystals"},
+        "frame_blood": {"price": 25000, "currency": "gold"}
+    }
+    
+    if frame not in frames_db: return web.json_response({"success": False})
+    item = frames_db[frame]
+    
+    if item["currency"] == "crystals" and me["crystals"] >= item["price"]:
+        me["crystals"] -= item["price"]
+        if frame not in me["inventory"]: me["inventory"].append(frame)
+        return web.json_response({"success": True, "msg": "Рамка куплена!"})
+    elif item["currency"] == "gold" and me["gold"] >= item["price"]:
+        me["gold"] -= item["price"]
+        if frame not in me["inventory"]: me["inventory"].append(frame)
+        return web.json_response({"success": True, "msg": "Рамка куплена!"})
+        
+    return web.json_response({"success": False, "error": "Не хватает средств!"})
+
 
 async def main():
     app = web.Application()
@@ -344,6 +439,9 @@ async def main():
     app.router.add_post('/api/admin_cheat', handle_admin_cheat)
     app.router.add_post('/api/buy_item', handle_buy_item)
     app.router.add_post('/api/open_case', handle_open_case)
+    app.router.add_post('/api/equip_frame', handle_equip_frame)
+    app.router.add_post('/api/change_color', handle_change_color)
+    app.router.add_post('/api/buy_frame', handle_buy_frame)
 
     runner = web.AppRunner(app)
     await runner.setup()
