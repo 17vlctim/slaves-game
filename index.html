@@ -94,12 +94,13 @@
         .frame-gold { border: 3px solid #ffd700; box-shadow: 0 0 15px #ffd700; }
         .frame-blood { border: 3px solid #8b0000; box-shadow: 0 0 15px #8b0000; }
 
-        /* НОВЫЕ СТИЛИ ДЛЯ ФИЛЬТРОВ */
-        .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
-        .filter-btn { background: var(--card); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 8px 15px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-        .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        /* Стили для выпадающего списка и поиска */
+        .select-custom { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 16px; background: var(--card); color: white; border: none; font-size: 15px; font-weight: 600; outline: none; appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 15px top 50%; background-size: 12px auto; }
         
-        /* ПЛАШКА ИВЕНТА В ПРОФИЛЕ */
+        .search-bar { display: flex; gap: 10px; margin-bottom: 15px; }
+        .search-bar input { flex: 1; padding: 15px; border-radius: 16px; border: 1px solid var(--primary); background: var(--card); color: white; font-size: 15px; outline: none; }
+        .search-bar button { padding: 0 20px; border-radius: 16px; background: var(--primary); border: none; color: white; font-size: 20px; cursor: pointer; }
+
         .event-banner-profile { background: linear-gradient(135deg, #ff4500, #ffd700); color: #000; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 20px; box-shadow: 0 0 15px rgba(255, 69, 0, 0.5); position: relative; overflow: hidden;}
         .event-banner-profile::before { content: '🔥'; position: absolute; right: -10px; bottom: -10px; font-size: 80px; opacity: 0.2; transform: rotate(-15deg);}
         .event-banner-profile h3 { margin: 0; font-size: 18px; font-weight: 900; text-transform: uppercase; position: relative; z-index: 1;}
@@ -110,15 +111,6 @@
     <div id="toast-container"></div>
 
     <!-- МОДАЛКИ -->
-    <div id="search-modal" class="modal-overlay">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeSearch()">×</button>
-            <h2 style="margin-top:0;">Поиск игрока</h2>
-            <input type="number" id="search-input" placeholder="Введите игровой ID (например 123456789)" style="width:100%; padding:15px; border-radius:12px; border:1px solid var(--primary); background:var(--bg); color:white; margin-bottom:15px; font-size:16px;">
-            <button class="btn btn-primary btn-full" onclick="searchPlayer()">Найти</button>
-        </div>
-    </div>
-
     <div id="refs-modal" class="modal-overlay">
         <div class="modal-content" style="max-height:80vh; overflow-y:auto;">
             <button class="modal-close" onclick="closeRefs()">×</button>
@@ -218,25 +210,32 @@
             <div class="stat-pill crystals"><span>💎</span> <span id="my-crystals">0</span></div>
             <div class="stat-pill energy"><span>⚡</span> <span id="my-energy">0</span></div>
         </div>
-        <button onclick="openSearch()" style="background:transparent; border:none; color:white; font-size:24px; cursor:pointer; margin-left:auto;">🔍</button>
     </div>
 
     <div class="content">
+        <!-- 1. РЫНОК (С ПОИСКОМ И СОРТИРОВКОЙ) -->
         <div id="tab-market" style="display: block;">
-            <h3 style="margin-top:0; font-weight:800; font-size:22px;">Невольничий рынок</h3>
+            <h3 style="margin-top:0; font-weight:800; font-size:22px; margin-bottom:15px;">Невольничий рынок</h3>
             
-            <!-- НОВЫЕ ФИЛЬТРЫ -->
-            <div class="filter-bar">
-                <button class="filter-btn active" onclick="setFilter('none', this)">По умолчанию</button>
-                <button class="filter-btn" onclick="setFilter('price_asc', this)">Цена: Дешевле</button>
-                <button class="filter-btn" onclick="setFilter('price_desc', this)">Цена: Дороже</button>
-                <button class="filter-btn" onclick="setFilter('income_desc', this)">Доход: Больше</button>
-                <button class="filter-btn" onclick="setFilter('income_asc', this)">Доход: Меньше</button>
+            <!-- Поиск по рынку -->
+            <div class="search-bar">
+                <input type="number" id="market-search-input" placeholder="Поиск по игровому ID..." style="font-size:14px;">
+                <button onclick="searchPlayer()">🔍</button>
             </div>
+
+            <!-- Сортировка -->
+            <select id="market-sort" class="select-custom" onchange="renderMarket()" style="margin-bottom:20px;">
+                <option value="default">По умолчанию</option>
+                <option value="price_asc">Цена: Сначала дешевые</option>
+                <option value="price_desc">Цена: Сначала дорогие</option>
+                <option value="income_desc">Доход: Сначала больше</option>
+                <option value="income_asc">Доход: Сначала меньше</option>
+            </select>
             
             <div id="market-list"></div>
         </div>
 
+        <!-- 2. МАГАЗИН -->
         <div id="tab-shop" style="display: none;">
             <h3 style="margin-top:0; font-weight:800; font-size:22px; text-align:center; margin-bottom:20px;">Королевский Магазин</h3>
             <div class="case-container" style="padding: 30px 20px;">
@@ -271,6 +270,7 @@
             </div>
         </div>
 
+        <!-- 3. ПРОФИЛЬ -->
         <div id="tab-profile" style="display: none;">
             <div class="profile-info" style="text-align: center; padding: 10px; margin-bottom: 20px; position: relative;">
                 <button onclick="openCustom()" style="position: absolute; right: 10px; top: 10px; background: var(--card); border: 1px solid var(--purple); border-radius: 12px; padding: 8px 12px; color: white; font-weight: bold; cursor: pointer;">🎨</button>
@@ -279,7 +279,6 @@
                 <div id="profile-id" style="font-size: 15px; color: var(--text-muted); margin-top: 5px; font-weight: 600;">ID: ...</div>
             </div>
 
-            <!-- ПЛАШКА ИВЕНТА -->
             <div id="event-banner" class="event-banner-profile" style="display:none;">
                 <h3>🔥 Битва за Трон</h3>
                 <p>Пригласи друга и получи <b>+50% к доходу на 24ч!</b></p>
@@ -324,19 +323,21 @@
             </div>
         </div>
 
+        <!-- 4. РЕЙТИНГ -->
         <div id="tab-rating" style="display: none;">
             <h3 style="margin-top:0; font-weight:800; font-size:22px;">Зал Славы</h3>
             <div id="emperor-banner" class="emperor-banner" style="display:none;">
                 <h3>👑 Император Дня</h3>
                 <p id="emperor-text"></p>
             </div>
-            <select id="lb-sort" onchange="renderLeaderboard()" style="width: 100%; padding: 15px; margin-bottom: 20px; border-radius: 16px; background: var(--card); color: white; border: none; font-size: 15px; font-weight: 600; outline: none; appearance: none;">
+            <select id="lb-sort" onchange="renderLeaderboard()" class="select-custom" style="margin-bottom:20px;">
                 <option value="gold">🏆 Топ-100 по богатству</option>
                 <option value="income">📈 Топ-100 по доходу в час</option>
             </select>
             <div id="leaderboard"></div>
         </div>
 
+        <!-- 5. ИМПЕРИИ -->
         <div id="tab-empire" style="display: none;">
             <h3 style="margin-top:0; font-weight:800; font-size:22px; text-align:center;">Великие Империи</h3>
             <div class="clan-card" style="background: var(--card); border-radius: 20px; padding: 20px; text-align: center; border: 1px dashed var(--primary); margin-bottom: 20px;">
@@ -374,7 +375,6 @@
         let myNameColor = "#ffffff";
         let myInventory = [];
         let isAdmin = false;
-        let currentFilter = 'none';
 
         if (!userId) {
             document.body.innerHTML = "<h3 style='padding:20px; text-align:center;'>Ошибка: Открой игру через бота!</h3>";
@@ -404,24 +404,17 @@
             btn.classList.add('active');
         }
 
-        // НОВАЯ ФУНКЦИЯ ФИЛЬТРАЦИИ
-        function setFilter(filter, btn) {
-            currentFilter = filter;
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            renderMarket();
-        }
-
         function renderMarket() {
+            const sortKey = document.getElementById('market-sort').value;
             const marketList = document.getElementById('market-list');
             marketList.innerHTML = '';
             
             let filteredMarket = [...rawMarket];
             
-            if (currentFilter === 'price_asc') filteredMarket.sort((a, b) => a.price - b.price);
-            else if (currentFilter === 'price_desc') filteredMarket.sort((a, b) => b.price - a.price);
-            else if (currentFilter === 'income_desc') filteredMarket.sort((a, b) => b.income - a.income);
-            else if (currentFilter === 'income_asc') filteredMarket.sort((a, b) => a.income - b.income);
+            if (sortKey === 'price_asc') filteredMarket.sort((a, b) => a.price - b.price);
+            else if (sortKey === 'price_desc') filteredMarket.sort((a, b) => b.price - a.price);
+            else if (sortKey === 'income_desc') filteredMarket.sort((a, b) => b.income - a.income);
+            else if (sortKey === 'income_asc') filteredMarket.sort((a, b) => a.income - b.income);
 
             if(filteredMarket.length === 0) marketList.innerHTML = "<p style='color:var(--text-muted); text-align:center; margin-top:20px;'>Пока никого нет.</p>";
             
@@ -457,6 +450,20 @@
             });
         }
 
+        async function searchPlayer() {
+            const gameId = document.getElementById('market-search-input').value;
+            if (!gameId) return showToast('Введите игровой ID', 'error');
+            
+            const res = await fetch(`/api/find_by_game_id?game_id=${gameId}`);
+            const data = await res.json();
+            
+            if (data.error) {
+                showToast('Игрок с таким ID не найден', 'error');
+            } else {
+                openProfile(data.user_id);
+            }
+        }
+
         async function loadState(name) {
             try {
                 const res = await fetch(`/api/state?user_id=${userId}&name=${encodeURIComponent(name)}`);
@@ -474,7 +481,6 @@
                 document.getElementById('my-energy').innerText = data.energy;
                 document.getElementById('income-per-hour').innerText = data.income_per_hour;
 
-                // Плашка ивента
                 if (data.event_time_left > 0) {
                     document.getElementById('event-banner').style.display = 'block';
                     const d = Math.floor(data.event_time_left / (3600*24));
@@ -525,7 +531,7 @@
                 }
 
                 rawMarket = data.market;
-                renderMarket(); // Вызываем рендер рынка с учетом фильтра
+                renderMarket();
 
                 const slavesList = document.getElementById('slaves-list');
                 slavesList.innerHTML = '';
@@ -577,9 +583,6 @@
 
             } catch (e) { console.error(e); }
         }
-
-        // ... (ОСТАЛЬНОЙ JS КОД ОСТАЕТСЯ ПРЕЖНИМ: renderLeaderboard, openProfile, closeProfile, buyFromModal, openSearch, closeSearch, searchPlayer, openRefs, closeRefs, adminAction, useBoost, openCaseInfo, openCase, openCustom, equipFrame, changeColor, buyFrame, buyItem, buyStars, inviteFriend, shareMyProfile, watchAd, claimDaily, collectIncome, doWork, buyPlayer, upgradeNpc, redeemSelf, hireAssassin, cheatMoney, cheatCrystals, cheatStar)
-        // Скопируй их из предыдущего кода. Они не менялись.
 
         function renderLeaderboard() {
             const sortKey = document.getElementById('lb-sort').value;
@@ -664,19 +667,6 @@
         function closeProfile(event) { document.getElementById('modal-overlay').style.display = 'none'; currentModalTargetId = null; }
         function buyFromModal() { if (currentModalTargetId) { closeProfile(); buyPlayer(currentModalTargetId); } }
         
-        function openSearch() { document.getElementById('search-modal').style.display = 'flex'; }
-        function closeSearch() { document.getElementById('search-modal').style.display = 'none'; }
-        
-        async function searchPlayer() {
-            const gameId = document.getElementById('search-input').value;
-            if (!gameId) return showToast('Введите игровой ID', 'error');
-            closeSearch();
-            const res = await fetch(`/api/find_by_game_id?game_id=${gameId}`);
-            const data = await res.json();
-            if (data.error) showToast('Игрок с таким ID не найден', 'error');
-            else openProfile(data.user_id);
-        }
-
         async function openRefs() {
             const res = await fetch(`/api/refs?user_id=${userId}`);
             const data = await res.json();
@@ -709,9 +699,7 @@
             else showToast(data.error, 'error');
         }
 
-        // ... (ОСТАЛЬНЫЕ ФУНКЦИИ: useBoost, openCaseInfo, openCase, openCustom, equipFrame, changeColor, buyFrame, buyItem, buyStars, inviteFriend, shareMyProfile, watchAd, claimDaily, collectIncome, doWork, buyPlayer, upgradeNpc, redeemSelf, hireAssassin, cheatMoney, cheatCrystals, cheatStar)
-        // Вставь их из предыдущего кода.
-        
+        // ... (ОСТАЛЬНЫЕ ФУНКЦИИ ОСТАЮТСЯ ПРЕЖНИМИ)
         async function useBoost() {
             const res = await fetch('/api/boost', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
             const data = await res.json();
