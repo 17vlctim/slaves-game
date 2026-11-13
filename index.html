@@ -88,12 +88,22 @@
         .emperor-banner h3 { margin: 0; font-size: 18px; font-weight: 900; text-transform: uppercase;}
         .emperor-banner p { margin: 5px 0 0 0; font-weight: 700; font-size: 14px;}
 
-        /* Рамки */
         .frame-basic { border: 3px solid #2a3648; }
         .frame-fire { border: 3px solid #ff4500; box-shadow: 0 0 15px #ff4500; }
         .frame-neon { border: 3px solid #00ffff; box-shadow: 0 0 15px #00ffff; }
         .frame-gold { border: 3px solid #ffd700; box-shadow: 0 0 15px #ffd700; }
         .frame-blood { border: 3px solid #8b0000; box-shadow: 0 0 15px #8b0000; }
+
+        /* НОВЫЕ СТИЛИ ДЛЯ ФИЛЬТРОВ */
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        .filter-btn { background: var(--card); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 8px 15px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+        .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        /* ПЛАШКА ИВЕНТА В ПРОФИЛЕ */
+        .event-banner-profile { background: linear-gradient(135deg, #ff4500, #ffd700); color: #000; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 20px; box-shadow: 0 0 15px rgba(255, 69, 0, 0.5); position: relative; overflow: hidden;}
+        .event-banner-profile::before { content: '🔥'; position: absolute; right: -10px; bottom: -10px; font-size: 80px; opacity: 0.2; transform: rotate(-15deg);}
+        .event-banner-profile h3 { margin: 0; font-size: 18px; font-weight: 900; text-transform: uppercase; position: relative; z-index: 1;}
+        .event-banner-profile p { margin: 5px 0 0 0; font-weight: 700; font-size: 13px; position: relative; z-index: 1;}
     </style>
 </head>
 <body>
@@ -214,6 +224,16 @@
     <div class="content">
         <div id="tab-market" style="display: block;">
             <h3 style="margin-top:0; font-weight:800; font-size:22px;">Невольничий рынок</h3>
+            
+            <!-- НОВЫЕ ФИЛЬТРЫ -->
+            <div class="filter-bar">
+                <button class="filter-btn active" onclick="setFilter('none', this)">По умолчанию</button>
+                <button class="filter-btn" onclick="setFilter('price_asc', this)">Цена: Дешевле</button>
+                <button class="filter-btn" onclick="setFilter('price_desc', this)">Цена: Дороже</button>
+                <button class="filter-btn" onclick="setFilter('income_desc', this)">Доход: Больше</button>
+                <button class="filter-btn" onclick="setFilter('income_asc', this)">Доход: Меньше</button>
+            </div>
+            
             <div id="market-list"></div>
         </div>
 
@@ -257,7 +277,14 @@
                 <img id="my-profile-avatar" src="img/avatar_1.jpg" class="profile-avatar frame-basic" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin: 0 auto 10px auto;" onerror="this.style.display='none';">
                 <h2 id="profile-name" style="font-size: 24px; font-weight: 800; margin: 0; color: #ffffff;">Игрок</h2>
                 <div id="profile-id" style="font-size: 15px; color: var(--text-muted); margin-top: 5px; font-weight: 600;">ID: ...</div>
-                <div id="event-timer" style="font-size: 12px; color: var(--red); margin-top: 5px; font-weight: 700;"></div>
+            </div>
+
+            <!-- ПЛАШКА ИВЕНТА -->
+            <div id="event-banner" class="event-banner-profile" style="display:none;">
+                <h3>🔥 Битва за Трон</h3>
+                <p>Пригласи друга и получи <b>+50% к доходу на 24ч!</b></p>
+                <p>Топ-3 игрока по приглашениям получат эксклюзивные награды!</p>
+                <div id="event-timer" style="font-size: 13px; font-weight: 800; margin-top: 8px; background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 10px; display: inline-block;">До конца: ...</div>
             </div>
 
             <div class="income-block">
@@ -340,12 +367,14 @@
         
         let botUsername = "";
         let rawLeaderboard = [];
+        let rawMarket = [];
         let currentModalTargetId = null;
         let myGameId = "";
         let myFrame = "frame_basic";
         let myNameColor = "#ffffff";
         let myInventory = [];
         let isAdmin = false;
+        let currentFilter = 'none';
 
         if (!userId) {
             document.body.innerHTML = "<h3 style='padding:20px; text-align:center;'>Ошибка: Открой игру через бота!</h3>";
@@ -375,6 +404,59 @@
             btn.classList.add('active');
         }
 
+        // НОВАЯ ФУНКЦИЯ ФИЛЬТРАЦИИ
+        function setFilter(filter, btn) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderMarket();
+        }
+
+        function renderMarket() {
+            const marketList = document.getElementById('market-list');
+            marketList.innerHTML = '';
+            
+            let filteredMarket = [...rawMarket];
+            
+            if (currentFilter === 'price_asc') filteredMarket.sort((a, b) => a.price - b.price);
+            else if (currentFilter === 'price_desc') filteredMarket.sort((a, b) => b.price - a.price);
+            else if (currentFilter === 'income_desc') filteredMarket.sort((a, b) => b.income - a.income);
+            else if (currentFilter === 'income_asc') filteredMarket.sort((a, b) => a.income - b.income);
+
+            if(filteredMarket.length === 0) marketList.innerHTML = "<p style='color:var(--text-muted); text-align:center; margin-top:20px;'>Пока никого нет.</p>";
+            
+            filteredMarket.forEach(p => {
+                const div = document.createElement('div');
+                div.className = `card rarity-${p.rarity}`;
+                let imgSrc = p.is_npc ? `img/${p.id}.jpg` : `img/avatar_1.jpg`; 
+                
+                let btnHtml = '';
+                if (p.owner_id) {
+                    btnHtml = `<span style="color:var(--red); font-size:14px; font-weight:700;">Занят</span>`;
+                } else if (p.shield) {
+                    btnHtml = `<span style="color:var(--primary); font-size:14px; font-weight:700;">🛡️ Щит</span>`;
+                } else {
+                    btnHtml = `<div style="display:flex; gap:8px;">
+                         <button class="btn btn-icon" onclick="openProfile('${p.id}')">i</button>
+                         <button class="btn btn-green" onclick="buyPlayer('${p.id}')">${p.price} 💰</button>
+                       </div>`;
+                }
+                
+                div.innerHTML = `
+                    <div class="card-left" onclick="openProfile('${p.id}')">
+                        <img src="${imgSrc}" class="avatar ${p.frame}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="avatar img-placeholder ${p.frame}" style="display:none;">?</div>
+                        <div>
+                            <div class="item-title" style="color: ${p.is_star ? '#f1c40f' : p.name_color}">${p.name} ${p.is_star ? '⭐' : ''}</div>
+                            <div class="item-sub">${p.rarity} • +${p.income} 💰/ч</div>
+                        </div>
+                    </div>
+                    ${btnHtml}
+                `;
+                marketList.appendChild(div);
+            });
+        }
+
         async function loadState(name) {
             try {
                 const res = await fetch(`/api/state?user_id=${userId}&name=${encodeURIComponent(name)}`);
@@ -392,12 +474,14 @@
                 document.getElementById('my-energy').innerText = data.energy;
                 document.getElementById('income-per-hour').innerText = data.income_per_hour;
 
+                // Плашка ивента
                 if (data.event_time_left > 0) {
+                    document.getElementById('event-banner').style.display = 'block';
                     const d = Math.floor(data.event_time_left / (3600*24));
                     const h = Math.floor(data.event_time_left % (3600*24) / 3600);
-                    document.getElementById('event-timer').innerText = `Ивент: ${d}д ${h}ч`;
+                    document.getElementById('event-timer').innerText = `До конца: ${d}д ${h}ч`;
                 } else {
-                    document.getElementById('event-timer').style.display = 'none';
+                    document.getElementById('event-banner').style.display = 'none';
                 }
 
                 document.getElementById('daily-btn').style.display = data.can_daily ? 'block' : 'none';
@@ -440,40 +524,8 @@
                     document.getElementById('emperor-text').innerHTML = `<b>${data.emperor.name}</b> владеет ${data.emperor.count} рабами!`;
                 }
 
-                const marketList = document.getElementById('market-list');
-                marketList.innerHTML = '';
-                if(data.market.length === 0) marketList.innerHTML = "<p style='color:var(--text-muted); text-align:center; margin-top:20px;'>Пока никого нет.</p>";
-                
-                data.market.forEach(p => {
-                    const div = document.createElement('div');
-                    div.className = `card rarity-${p.rarity}`;
-                    let imgSrc = p.is_npc ? `img/${p.id}.jpg` : `img/avatar_1.jpg`; 
-                    
-                    let btnHtml = '';
-                    if (p.owner_id) {
-                        btnHtml = `<span style="color:var(--red); font-size:14px; font-weight:700;">Занят</span>`;
-                    } else if (p.shield) {
-                        btnHtml = `<span style="color:var(--primary); font-size:14px; font-weight:700;">🛡️ Щит</span>`;
-                    } else {
-                        btnHtml = `<div style="display:flex; gap:8px;">
-                             <button class="btn btn-icon" onclick="openProfile('${p.id}')">i</button>
-                             <button class="btn btn-green" onclick="buyPlayer('${p.id}')">${p.price} 💰</button>
-                           </div>`;
-                    }
-                    
-                    div.innerHTML = `
-                        <div class="card-left" onclick="openProfile('${p.id}')">
-                            <img src="${imgSrc}" class="avatar ${p.frame}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                            <div class="avatar img-placeholder ${p.frame}" style="display:none;">?</div>
-                            <div>
-                                <div class="item-title" style="color: ${p.is_star ? '#f1c40f' : p.name_color}">${p.name} ${p.is_star ? '⭐' : ''}</div>
-                                <div class="item-sub">${p.rarity}</div>
-                            </div>
-                        </div>
-                        ${btnHtml}
-                    `;
-                    marketList.appendChild(div);
-                });
+                rawMarket = data.market;
+                renderMarket(); // Вызываем рендер рынка с учетом фильтра
 
                 const slavesList = document.getElementById('slaves-list');
                 slavesList.innerHTML = '';
@@ -526,6 +578,9 @@
             } catch (e) { console.error(e); }
         }
 
+        // ... (ОСТАЛЬНОЙ JS КОД ОСТАЕТСЯ ПРЕЖНИМ: renderLeaderboard, openProfile, closeProfile, buyFromModal, openSearch, closeSearch, searchPlayer, openRefs, closeRefs, adminAction, useBoost, openCaseInfo, openCase, openCustom, equipFrame, changeColor, buyFrame, buyItem, buyStars, inviteFriend, shareMyProfile, watchAd, claimDaily, collectIncome, doWork, buyPlayer, upgradeNpc, redeemSelf, hireAssassin, cheatMoney, cheatCrystals, cheatStar)
+        // Скопируй их из предыдущего кода. Они не менялись.
+
         function renderLeaderboard() {
             const sortKey = document.getElementById('lb-sort').value;
             const lbList = document.getElementById('leaderboard');
@@ -575,7 +630,6 @@
                 actionBtn.style.display = 'none';
             }
             
-            // Показываем админку, если мы админ
             if (isAdmin && data.id != userId) {
                 document.getElementById('admin-profile-actions').style.display = 'block';
             } else {
@@ -610,70 +664,54 @@
         function closeProfile(event) { document.getElementById('modal-overlay').style.display = 'none'; currentModalTargetId = null; }
         function buyFromModal() { if (currentModalTargetId) { closeProfile(); buyPlayer(currentModalTargetId); } }
         
-        // --- ПОИСК И РЕФЕРАЛЫ ---
         function openSearch() { document.getElementById('search-modal').style.display = 'flex'; }
         function closeSearch() { document.getElementById('search-modal').style.display = 'none'; }
         
         async function searchPlayer() {
             const gameId = document.getElementById('search-input').value;
             if (!gameId) return showToast('Введите игровой ID', 'error');
-            
             closeSearch();
-            
             const res = await fetch(`/api/find_by_game_id?game_id=${gameId}`);
             const data = await res.json();
-            
-            if (data.error) {
-                showToast('Игрок с таким ID не найден', 'error');
-            } else {
-                openProfile(data.user_id);
-            }
+            if (data.error) showToast('Игрок с таким ID не найден', 'error');
+            else openProfile(data.user_id);
         }
 
         async function openRefs() {
             const res = await fetch(`/api/refs?user_id=${userId}`);
             const data = await res.json();
-            
             const list = document.getElementById('refs-list');
             list.innerHTML = '';
-            
             if (data.refs.length === 0) {
                 list.innerHTML = "<p style='color:var(--text-muted); text-align:center;'>У вас пока нет приглашенных.</p>";
             } else {
                 data.refs.forEach(r => {
                     list.innerHTML += `
                         <div class="card" style="padding: 12px; margin-bottom: 8px;" onclick="openProfile('${r.id}'); closeRefs();">
-                            <div class="card-left">
-                                <b>${r.is_star ? '⭐ ' : ''}${r.name}</b>
-                            </div>
+                            <div class="card-left"><b>${r.is_star ? '⭐ ' : ''}${r.name}</b></div>
                             <span style="color:var(--text-muted); font-size:12px;">ID: ${r.game_id}</span>
                         </div>
                     `;
                 });
             }
-            
             document.getElementById('refs-modal').style.display = 'flex';
         }
-        
         function closeRefs() { document.getElementById('refs-modal').style.display = 'none'; }
         
-        // --- АДМИНКА ---
         async function adminAction(action, amount) {
             if (!currentModalTargetId) return;
-            
             const res = await fetch('/api/admin_action', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ admin_id: userId, target_id: currentModalTargetId, action: action, amount: amount })
             });
             const data = await res.json();
-            
             if (data.success) { showToast(data.msg); openProfile(currentModalTargetId); } 
             else showToast(data.error, 'error');
         }
 
-        // ... ОСТАЛЬНЫЕ ФУНКЦИИ (useBoost, openCaseInfo, openCase, openCustom, equipFrame, changeColor, buyFrame, buyItem, buyStars, inviteFriend, shareMyProfile, watchAd, claimDaily, collectIncome, doWork, buyPlayer, upgradeNpc, redeemSelf, hireAssassin, cheatMoney, cheatCrystals, cheatStar) ...
-        // Я их не менял, они полностью идентичны предыдущему коду. Вставь их сюда.
-
+        // ... (ОСТАЛЬНЫЕ ФУНКЦИИ: useBoost, openCaseInfo, openCase, openCustom, equipFrame, changeColor, buyFrame, buyItem, buyStars, inviteFriend, shareMyProfile, watchAd, claimDaily, collectIncome, doWork, buyPlayer, upgradeNpc, redeemSelf, hireAssassin, cheatMoney, cheatCrystals, cheatStar)
+        // Вставь их из предыдущего кода.
+        
         async function useBoost() {
             const res = await fetch('/api/boost', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
             const data = await res.json();
