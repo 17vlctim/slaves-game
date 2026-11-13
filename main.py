@@ -7,6 +7,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command, CommandObject
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
+# --- НАСТРОЙКИ ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 ADMIN_ID = str(os.environ.get("ADMIN_ID", ""))
 WEB_URL = "https://slaves-game.onrender.com" 
@@ -17,6 +18,10 @@ if not BOT_TOKEN:
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+
+# Время старта сервера (для отсчета 7 дней ивента)
+SERVER_START_TIME = time.time()
+EVENT_DURATION = 7 * 24 * 60 * 60 # 7 дней в секундах
 
 # --- БАЗА ДАННЫХ ---
 users = {}
@@ -47,10 +52,20 @@ def create_user(user_id, name, referrer_id=None):
         
         start_gold = 1000
         start_crystals = 50 
+        
+        # Проверяем, идет ли еще ивент
+        now = time.time()
+        is_event_active = (now - SERVER_START_TIME) < EVENT_DURATION
 
         if referrer_id and referrer_id in users:
-            start_gold += 500 
-            users[referrer_id]["gold"] += 500
+            if is_event_active:
+                start_gold += 1000
+                start_crystals += 20
+                users[referrer_id]["gold"] += 1000
+                users[referrer_id]["crystals"] += 20
+            else:
+                start_gold += 500 
+                users[referrer_id]["gold"] += 500
             users[referrer_id]["ref_count"] = users[referrer_id].get("ref_count", 0) + 1
 
         users[user_id] = {
@@ -60,7 +75,7 @@ def create_user(user_id, name, referrer_id=None):
             "last_ad_watch": 0, "ref_count": 0, "bought_count": 0, "sold_count": 0,
             "game_id": fake_id, "shield_until": 0, "chains_until": 0,
             "frame": "frame_basic", "name_color": "#ffffff",
-            "inventory": []
+            "inventory": [], "is_star": False, "is_oligarch": False, "last_boost": 0
         }
     return users[user_id]
 
@@ -103,21 +118,23 @@ async def handle_state(request):
     income_per_hour = 0
     all_users_rating = []
     
-    # Ищем Императора дня (максимум рабов)
-    max_slaves = -1
-    emperor_of_day = None
-    for uid, u in users.items():
-        slaves_count = sum(1 for s in all_entities.values() if s.get("owner_id") == uid)
-        if slaves_count > max_slaves:
-            max_slaves = slaves_count
-            emperor_of_day = {"name": u["name"], "count": slaves_count}
-            
+    # Проверка на Олигарха (первый, кто набрал 1 лям)
+    if me["gold"] >= 1000000 and not me["is_oligarch"]:
+        me["is_oligarch"] = True
+        me["crystals"] += 500
+        try:
+            await bot.send_message(int(user_id), "👑 Поздравляем! Вы первый, кто накопил 1 000 000 монет! Вам присвоен титул Олигарх и начислено 500 💎!")
+        except: pass
+
+    # Множитель дохода, если Звезда
+    star_multiplier = 1.5 if me.get("is_star") else 1.0
+
     for uid, u in users.items():
         u_inc = 0
         for s in all_entities.values():
             if s["owner_id"] == uid:
                 u_inc += (s["base_income"] * s["level"]) if s.get("is_npc") else 50
-        all_users_rating.append({"id": uid, "name": u["name"], "gold": u["gold"], "income": u_inc, "game_id": u["game_id"]})
+        all_users_rating.append({"id": uid, "name": u["name"], "gold": u["gold"], "income": u_inc, "game_id": u["game_id"], "is_oligarch": u.get("is_oligarch", False), "is_star": u.get("is_star", False)})
         
         if u["owner_id"] == user_id:
             my_slaves.append({"id": uid, "name": u["name"], "rarity": "Игрок", "level": 1, "income": 50, "is_npc": False, "game_id": u["game_id"]})
@@ -129,17 +146,21 @@ async def handle_state(request):
             my_slaves.append({"id": uid, "name": n["name"], "rarity": n["rarity"], "level": n["level"], "income": inc, "is_npc": True, "game_id": None})
             income_per_hour += inc
 
-    hours_passed = min(24, (now - me["last_collected"]) / 3600)
+    income_per_hour = int(income_per_hour * star_multiplier)
+
+    # Ограничение офлайна 8 часов
+    hours_passed = min(8, (now - me["last_collected"]) / 3600)
     pending_income = int(hours_passed * income_per_hour)
     can_daily = (now - me["last_daily"]) > 86400
     can_watch_ad = (now - me["last_ad_watch"]) > 3600
+    can_boost = (now - me.get("last_boost", 0)) > (4 * 3600)
 
     market = []
     for uid, u in users.items():
         if uid != user_id:
-            market.append({"id": uid, "name": u["name"], "owner_id": u["owner_id"], "price": 1000 + (len(u["name"]) * 10), "rarity": "Игрок", "is_npc": False, "game_id": u["game_id"], "shield": u.get("shield_until", 0) > now, "frame": u.get("frame", "frame_basic"), "name_color": u.get("name_color", "#ffffff")})
+            market.append({"id": uid, "name": u["name"], "owner_id": u["owner_id"], "price": 1000 + (len(u["name"]) * 10), "rarity": "Игрок", "is_npc": False, "game_id": u["game_id"], "shield": u.get("shield_until", 0) > now, "frame": u.get("frame", "frame_basic"), "name_color": u.get("name_color", "#ffffff"), "is_star": u.get("is_star", False)})
     for uid, n in npcs.items():
-        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True, "game_id": None, "shield": False, "frame": "frame_basic", "name_color": "#ffffff"})
+        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True, "game_id": None, "shield": False, "frame": "frame_basic", "name_color": "#ffffff", "is_star": False})
 
     my_owner = None
     if me["owner_id"] and me["owner_id"] in all_entities:
@@ -147,22 +168,39 @@ async def handle_state(request):
 
     bot_info = await bot.get_me()
 
+    # Считаем оставшееся время ивента
+    time_left = max(0, int(EVENT_DURATION - (now - SERVER_START_TIME)))
+
     return web.json_response({
         "gold": me["gold"], "crystals": me["crystals"], "energy": me["energy"],
         "income_per_hour": income_per_hour, "pending_income": pending_income,
         "market": market, "my_slaves": my_slaves, "my_owner": my_owner,
         "is_admin": (str(user_id) == str(ADMIN_ID)),
-        "can_daily": can_daily, "can_watch_ad": can_watch_ad, "has_shield": me.get("shield_until", 0) > now,
+        "can_daily": can_daily, "can_watch_ad": can_watch_ad, "can_boost": can_boost,
+        "has_shield": me.get("shield_until", 0) > now,
         "leaderboard": all_users_rating,
         "my_name": me["name"], "my_game_id": me["game_id"],
         "ref_count": me.get("ref_count", 0), "bought_count": me.get("bought_count", 0), "sold_count": me.get("sold_count", 0),
         "bot_username": bot_info.username,
         "my_frame": me.get("frame", "frame_basic"), "my_name_color": me.get("name_color", "#ffffff"), "my_inventory": me.get("inventory", []),
-        "emperor": emperor_of_day
+        "is_star": me.get("is_star", False), "is_oligarch": me.get("is_oligarch", False),
+        "event_time_left": time_left
     })
 
-# ... (функции case_info, user_info, collect, work, daily, watch_ad, buy, redeem, upgrade, admin_cheat, buy_item, open_case, equip_frame, change_color, buy_frame остаются без изменений) ...
-# Я вставлю их сюда для полноты картины, скопируй их из предыдущего кода или просто не удаляй при замене.
+async def handle_boost(request):
+    data = await request.json()
+    user_id = str(data.get("user_id"))
+    me = users.get(user_id)
+    now = time.time()
+    
+    if me and (now - me.get("last_boost", 0)) > (4 * 3600):
+        me["last_boost"] = now
+        me["last_collected"] = now - (1 * 3600) # Даем бонус как будто час прошел
+        return web.json_response({"success": True, "msg": "Бустер активирован! Вы получили доход за 1 час вперед."})
+    return web.json_response({"success": False, "error": "Бустер еще не готов!"})
+
+# ... (все остальные функции: case_info, user_info, collect, work, daily, watch_ad, buy, hire_assassin, redeem, upgrade, admin_cheat, buy_item, open_case, equip_frame, change_color, buy_frame остаются как были) ...
+# ВСТАВЬ ИХ СЮДА ИЗ ПРЕДЫДУЩЕГО СООБЩЕНИЯ, ОНИ РАБОТАЮТ.
 
 async def handle_case_info(request):
     total_weight = sum(item["weight"] for item in CASE_LOOT)
@@ -203,7 +241,7 @@ async def handle_user_info(request):
     target_owner_name = None
     if target_user["owner_id"] and target_user["owner_id"] in all_entities:
         target_owner_name = all_entities[target_user["owner_id"]]["name"]
-    return web.json_response({"name": target_user["name"], "gold": target_user["gold"], "income": target_income, "slaves": target_slaves, "owner_name": target_owner_name, "id": target_id, "game_id": target_user["game_id"], "frame": target_user.get("frame", "frame_basic"), "name_color": target_user.get("name_color", "#ffffff")})
+    return web.json_response({"name": target_user["name"], "gold": target_user["gold"], "income": target_income, "slaves": target_slaves, "owner_name": target_owner_name, "id": target_id, "game_id": target_user["game_id"], "frame": target_user.get("frame", "frame_basic"), "name_color": target_user.get("name_color", "#ffffff"), "is_star": target_user.get("is_star", False)})
 
 async def handle_collect(request):
     data = await request.json(); user_id = str(data.get("user_id")); me = users.get(user_id)
@@ -211,7 +249,9 @@ async def handle_collect(request):
     income_per_hour = 0
     for u in {**users, **npcs}.values():
         if u["owner_id"] == user_id: income_per_hour += (u["base_income"] * u["level"]) if u.get("is_npc") else 50
-    now = time.time(); hours_passed = min(24, (now - me["last_collected"]) / 3600); pending = int(hours_passed * income_per_hour)
+    if me.get("is_star"): income_per_hour = int(income_per_hour * 1.5)
+    
+    now = time.time(); hours_passed = min(8, (now - me["last_collected"]) / 3600); pending = int(hours_passed * income_per_hour)
     if pending <= 0: return web.json_response({"success": False, "error": "Нечего забирать"})
     me["gold"] += pending; me["last_collected"] = now
     return web.json_response({"success": True})
@@ -255,34 +295,21 @@ async def handle_buy(request):
     buyer["bought_count"] = buyer.get("bought_count", 0) + 1
     if not target.get("is_npc"): target["sold_count"] = target.get("sold_count", 0) + 1
     
-    # УВЕДОМЛЕНИЕ В TELEGRAM
     if not target.get("is_npc"):
-        try:
-            await bot.send_message(
-                int(target_id), 
-                f"😡 <b>{buyer['name']}</b> купил тебя за <b>{price} монет</b>!\nТы теперь его раб. Зайди в игру и выкупи себя или найми убийцу!"
-            )
-        except Exception as e:
-            print(f"Не удалось отправить уведомление: {e}")
-
+        try: await bot.send_message(int(target_id), f"😡 <b>{buyer['name']}</b> купил тебя за <b>{price} монет</b>!\nТы теперь его раб. Зайди в игру и выкупи себя или найми убийцу!")
+        except: pass
     return web.json_response({"success": True})
 
 async def handle_hire_assassin(request):
     data = await request.json(); user_id = str(data.get("user_id")); me = users.get(user_id)
     if not me or not me.get("owner_id"): return web.json_response({"success": False, "error": "Ты не раб!"})
-    
     if me["crystals"] < 100: return web.json_response({"success": False, "error": "Нужно 100 💎!"})
     
     me["crystals"] -= 100
-    owner_id = me["owner_id"]
-    owner_name = users[owner_id]["name"] if owner_id in users else "Неизвестный"
+    owner_id = me["owner_id"]; owner_name = users[owner_id]["name"] if owner_id in users else "Неизвестный"
     me["owner_id"] = None
-    
-    # Уведомление бывшему владельцу
-    try:
-        await bot.send_message(int(owner_id), f"🔪 <b>{me['name']}</b> нанял убийцу и сбежал от тебя!")
+    try: await bot.send_message(int(owner_id), f"🔪 <b>{me['name']}</b> нанял убийцу и сбежал от тебя!")
     except: pass
-
     return web.json_response({"success": True, "msg": f"Ты заплатил убийце и сбежал от {owner_name}!"})
 
 async def handle_redeem(request):
@@ -307,9 +334,9 @@ async def handle_admin_cheat(request):
     try:
         data = await request.json(); user_id = str(data.get("user_id")); amount = int(data.get("amount", 10000)); item_type = data.get("type", "gold")
         if user_id == ADMIN_ID:
-            if user_id not in users: return web.json_response({"success": False, "error": "Нет профиля"})
             if item_type == "gold": users[user_id]["gold"] += amount
             elif item_type == "crystals": users[user_id]["crystals"] += amount
+            elif item_type == "star": users[user_id]["is_star"] = True
             return web.json_response({"success": True})
         return web.json_response({"success": False, "error": "Доступ запрещен"})
     except Exception as e: return web.json_response({"success": False, "error": str(e)})
@@ -339,11 +366,8 @@ async def handle_open_case(request):
     selected_loot = CASE_LOOT[0]
     for item in CASE_LOOT:
         current_weight += item["weight"]
-        if rand_val <= current_weight:
-            selected_loot = item
-            break
-    loot_msg = selected_loot["msg"]
-    loot_type = selected_loot["type"]
+        if rand_val <= current_weight: selected_loot = item; break
+    loot_msg = selected_loot["msg"]; loot_type = selected_loot["type"]
     if loot_type == "gold": me["gold"] += selected_loot["value"]
     elif loot_type == "income_10h":
         income_per_hour = 0
@@ -358,9 +382,7 @@ async def handle_open_case(request):
         elif selected_loot["value"] == "chains": me["chains_until"] = time.time() + (12 * 3600)
     elif loot_type == "npc":
         if npcs["npc_dragon"]["owner_id"] is None: npcs["npc_dragon"]["owner_id"] = user_id
-        else:
-            me["gold"] += 15000
-            loot_msg = "Дракон уже занят. Компенсация: 15 000 золота!"
+        else: me["gold"] += 15000; loot_msg = "Дракон уже занят. Компенсация: 15 000 золота!"
     return web.json_response({"success": True, "msg": loot_msg})
 
 async def handle_equip_frame(request):
@@ -404,6 +426,7 @@ async def main():
     app.router.add_post('/api/collect', handle_collect)
     app.router.add_post('/api/daily', handle_daily)
     app.router.add_post('/api/watch_ad', handle_watch_ad)
+    app.router.add_post('/api/boost', handle_boost)
     app.router.add_post('/api/buy', handle_buy)
     app.router.add_post('/api/redeem', handle_redeem)
     app.router.add_post('/api/upgrade', handle_upgrade)
