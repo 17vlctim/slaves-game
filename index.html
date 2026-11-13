@@ -17,7 +17,6 @@
         .frame-gold { border: 3px solid #ffd700; box-shadow: 0 0 15px #ffd700; }
         .frame-blood { border: 3px solid #8b0000; box-shadow: 0 0 15px #8b0000; }
 
-        /* Шапка */
         .header { background: rgba(15, 20, 30, 0.8); backdrop-filter: blur(10px); padding: 15px; display: flex; justify-content: center; align-items: center; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .stats { display: flex; gap: 10px; font-weight: 700; font-size: 16px; }
         .stat-pill { display: flex; align-items: center; gap: 5px; background: var(--card); padding: 8px 14px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
@@ -26,7 +25,6 @@
         .content { padding: 15px; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Нижнее меню */
         .tabs { display: flex; position: fixed; bottom: 0; width: 100%; background: #151d29; border-top: 1px solid rgba(255,255,255,0.05); padding: 8px 2px calc(8px + env(safe-area-inset-bottom)) 2px; justify-content: space-between; align-items: flex-end; z-index: 10; }
         .tab-btn { flex: 1; background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: all 0.2s ease; padding: 5px 0; }
         .tab-btn.active { color: var(--primary); transform: translateY(-3px) scale(1.1); }
@@ -35,7 +33,6 @@
         .tab-text { font-size: 10px; font-weight: 600; transition: all 0.2s; }
         .tab-btn.active .tab-text { font-weight: 800; }
 
-        /* Карточки */
         .card { background: linear-gradient(180deg, var(--card) 0%, #151d29 100%); border-radius: 20px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
         .card-left { display: flex; align-items: center; gap: 15px; flex: 1; cursor: pointer; }
         .avatar { width: 50px; height: 50px; border-radius: 50%; background: #0f141e; object-fit: cover; }
@@ -45,7 +42,6 @@
         .item-title { font-size: 16px; font-weight: 700; margin-bottom: 4px;}
         .item-sub { font-size: 13px; color: var(--text-muted); font-weight: 500; }
 
-        /* Кнопки */
         .btn { padding: 12px 18px; border-radius: 14px; border: none; color: white; font-weight: 700; cursor: pointer; font-size: 14px; text-align: center; transition: all 0.2s; background: var(--primary); box-shadow: 0 4px 15px rgba(42, 171, 238, 0.3); }
         .btn:active { transform: scale(0.95); box-shadow: none;}
         .btn-green { background: var(--green); color: #000; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3); }
@@ -55,24 +51,20 @@
         .btn-icon { padding: 10px; border-radius: 14px; background: rgba(255,255,255,0.05); color: white; font-weight: bold; font-size: 16px; display: flex; justify-content: center; align-items: center;}
         .btn-full { width: 100%; padding: 18px; font-size: 18px; margin-bottom: 15px; border-radius: 20px; display: flex; justify-content: center; align-items: center; gap: 10px;}
         
-        /* Профиль */
         .income-block { text-align: center; background: linear-gradient(135deg, #1c2533 0%, #0f141e 100%); padding: 30px 20px; border-radius: 30px; margin-bottom: 20px; border: 1px solid rgba(245, 176, 65, 0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.4), inset 0 0 20px rgba(245, 176, 65, 0.05); }
         .income-block h1 { margin: 0; font-size: 48px; color: var(--gold); font-weight: 900; text-shadow: 0 0 20px rgba(245, 176, 65, 0.4); }
         .income-block p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;}
 
-        /* Магазин и Кейсы */
         .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;}
         .shop-card { background: linear-gradient(180deg, var(--card) 0%, #151d29 100%); border-radius: 20px; padding: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: space-between; }
         .shop-card h3 { margin: 0 0 5px 0; color: var(--text); font-size: 16px;}
         .shop-card p { color: var(--text-muted); font-size: 12px; margin-bottom: 15px; flex-grow: 1;}
         .shop-icon { font-size: 40px; margin-bottom: 10px; text-shadow: 0 0 15px rgba(255,255,255,0.2); }
         
-        /* Анимация Кейса */
         .case-container { text-align: center; padding: 20px 0; background: var(--card); border-radius: 20px; margin-bottom: 20px; border: 1px solid var(--purple); }
         .case-image { font-size: 100px; margin-bottom: 20px; animation: float 3s ease-in-out infinite; }
         @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
         
-        /* Уведомления */
         #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; width: 90%; max-width: 400px; }
         .toast { background: rgba(28, 37, 51, 0.95); backdrop-filter: blur(5px); color: white; padding: 16px 20px; border-radius: 16px; font-weight: 600; font-size: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; border: 1px solid rgba(255,255,255,0.1); }
         .toast.success { border-bottom: 4px solid var(--green); }
@@ -80,11 +72,9 @@
         @keyframes slideDown { from { top: -100px; opacity: 0; } to { top: 0; opacity: 1; } }
         @keyframes fadeOut { from { opacity: 1; transform: scale(0.9); } to { opacity: 0; } }
 
-        /* МОДАЛЬНЫЕ ОКНА */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 100; display: none; justify-content: center; align-items: center; animation: fadeIn 0.2s ease; }
         .modal-content { background: #151d29; width: 90%; max-width: 400px; border-radius: 30px; padding: 25px; position: relative; text-align: center; border: 2px solid var(--primary); }
         
-        /* Модалка кейса */
         .case-opening-modal { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px;}
         .case-spinner { font-size: 80px; animation: spin 0.5s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(1.2); } 100% { transform: rotate(360deg) scale(1); } }
@@ -93,7 +83,6 @@
 
         .modal-close { position: absolute; top: 15px; right: 15px; font-size: 24px; color: var(--text-muted); cursor: pointer; background: transparent; border: none; }
         
-        /* Кастомизация */
         .custom-frame-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
         .custom-frame-item { width: 60px; height: 60px; border-radius: 50%; background: #0f141e; margin: 0 auto; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 10px; color: #fff; overflow: hidden;}
         .color-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
@@ -101,12 +90,16 @@
         .color-item.active { border-color: white; }
         
         .img-placeholder { background: #151d29; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: var(--text-muted); font-size: 20px; }
+        
+        .emperor-banner { background: linear-gradient(90deg, #b8860b, #ffd700, #b8860b); color: #000; padding: 15px; border-radius: 20px; text-align: center; margin-bottom: 20px; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
+        .emperor-banner h3 { margin: 0; font-size: 18px; font-weight: 900; text-transform: uppercase;}
+        .emperor-banner p { margin: 5px 0 0 0; font-weight: 700; font-size: 14px;}
     </style>
 </head>
 <body>
     <div id="toast-container"></div>
 
-    <!-- МОДАЛКА ИНФО О КЕЙСЕ -->
+    <!-- МОДАЛКИ -->
     <div id="case-info-modal" class="modal-overlay">
         <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
             <button class="modal-close" onclick="closeCaseInfo()">×</button>
@@ -116,7 +109,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА ОТКРЫТИЯ КЕЙСА -->
     <div id="case-modal" class="modal-overlay">
         <div class="modal-content">
             <div id="case-animation-area" class="case-opening-modal">
@@ -127,7 +119,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА КАСТОМИЗАЦИИ -->
     <div id="custom-modal" class="modal-overlay">
         <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
             <button class="modal-close" onclick="closeCustom()">×</button>
@@ -158,7 +149,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА ПРОФИЛЯ -->
     <div id="modal-overlay" class="modal-overlay" onclick="closeProfile(event)">
         <div class="modal-content" onclick="event.stopPropagation()" style="text-align: left;">
             <button class="modal-close" onclick="closeProfile(event)">×</button>
@@ -196,16 +186,13 @@
     </div>
 
     <div class="content">
-        <!-- 1. РЫНОК -->
         <div id="tab-market" style="display: block;">
             <h3 style="margin-top:0; font-weight:800; font-size:22px;">Невольничий рынок</h3>
             <div id="market-list"></div>
         </div>
 
-        <!-- 2. МАГАЗИН -->
         <div id="tab-shop" style="display: none;">
             <h3 style="margin-top:0; font-weight:800; font-size:22px; text-align:center; margin-bottom:20px;">Королевский Магазин</h3>
-            
             <div class="case-container" style="padding: 30px 20px;">
                 <div class="case-image" style="font-size:80px;">🎁</div>
                 <h3 style="margin: 0; color: var(--purple); font-size: 24px;">Сундук Императора</h3>
@@ -215,7 +202,6 @@
                     <button class="btn btn-purple" onclick="openCase()" style="flex: 1;">Купить и открыть (25 💎)</button>
                 </div>
             </div>
-
             <h4 style="margin-top:30px; font-weight:800; font-size:18px;">Усиления</h4>
             <div class="shop-grid">
                 <div class="shop-card">
@@ -231,7 +217,6 @@
                     <button class="btn btn-gold" style="width:100%;" onclick="buyItem('chains')">20 💎</button>
                 </div>
             </div>
-            
             <h4 style="margin-top:30px; font-weight:800; font-size:18px;">Пополнение</h4>
             <div class="shop-card" style="border-color: var(--purple);">
                 <h3>500 Кристаллов</h3>
@@ -240,7 +225,6 @@
             </div>
         </div>
 
-        <!-- 3. ПРОФИЛЬ -->
         <div id="tab-profile" style="display: none;">
             <div class="profile-info" style="text-align: center; padding: 10px; margin-bottom: 20px; position: relative;">
                 <button onclick="openCustom()" style="position: absolute; right: 10px; top: 10px; background: var(--card); border: 1px solid var(--purple); border-radius: 12px; padding: 8px 12px; color: white; font-weight: bold; cursor: pointer;">🎨</button>
@@ -282,9 +266,15 @@
             </div>
         </div>
 
-        <!-- 4. РЕЙТИНГ -->
         <div id="tab-rating" style="display: none;">
             <h3 style="margin-top:0; font-weight:800; font-size:22px;">Зал Славы</h3>
+            
+            <!-- Баннер Императора Дня -->
+            <div id="emperor-banner" class="emperor-banner" style="display:none;">
+                <h3>👑 Император Дня</h3>
+                <p id="emperor-text"></p>
+            </div>
+
             <select id="lb-sort" onchange="renderLeaderboard()" style="width: 100%; padding: 15px; margin-bottom: 20px; border-radius: 16px; background: var(--card); color: white; border: none; font-size: 15px; font-weight: 600; outline: none; appearance: none;">
                 <option value="gold">🏆 Топ-100 по богатству</option>
                 <option value="income">📈 Топ-100 по доходу в час</option>
@@ -292,7 +282,6 @@
             <div id="leaderboard"></div>
         </div>
 
-        <!-- 5. ИМПЕРИИ -->
         <div id="tab-empire" style="display: none;">
             <h3 style="margin-top:0; font-weight:800; font-size:22px; text-align:center;">Великие Империи</h3>
             <div class="clan-card" style="background: var(--card); border-radius: 20px; padding: 20px; text-align: center; border: 1px dashed var(--primary); margin-bottom: 20px;">
@@ -304,7 +293,6 @@
         </div>
     </div>
 
-    <!-- НИЖНЕЕ МЕНЮ -->
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('market', this)"><div class="tab-icon" style="mask-image: url('img/icon_market.svg'); -webkit-mask-image: url('img/icon_market.svg');"></div><span class="tab-text">Рынок</span></button>
         <button class="tab-btn" onclick="switchTab('shop', this)"><div class="tab-icon" style="mask-image: url('img/icon_shop.svg'); -webkit-mask-image: url('img/icon_shop.svg');"></div><span class="tab-text">Магазин</span></button>
@@ -401,6 +389,12 @@
                 document.getElementById('stat-sold').innerText = data.sold_count;
                 if (data.is_admin) document.getElementById('admin-panel').style.display = 'block';
 
+                // Император дня
+                if (data.emperor) {
+                    document.getElementById('emperor-banner').style.display = 'block';
+                    document.getElementById('emperor-text').innerHTML = `<b>${data.emperor.name}</b> владеет ${data.emperor.count} рабами!`;
+                }
+
                 const marketList = document.getElementById('market-list');
                 marketList.innerHTML = '';
                 if(data.market.length === 0) marketList.innerHTML = "<p style='color:var(--text-muted); text-align:center; margin-top:20px;'>Пока никого нет.</p>";
@@ -474,7 +468,8 @@
                 if (data.my_owner) {
                     ownerInfo.innerHTML = `<div class="card" style="border-left-color:var(--red); flex-direction:column; align-items:flex-start; padding:20px;">
                         <div style="font-size:16px; margin-bottom:15px; font-weight:600;">Твой владелец: <b style="color:var(--red);">${data.my_owner}</b></div>
-                        <button class="btn btn-red" style="width:100%;" onclick="redeemSelf()">Выкупить себя</button>
+                        <button class="btn btn-red" style="width:100%; margin-bottom:10px;" onclick="redeemSelf()">Выкупить себя</button>
+                        <button class="btn btn-purple" style="width:100%; background:#8e44ad;" onclick="hireAssassin()">Нанять убийцу (100 💎)</button>
                     </div>`;
                 } else {
                     ownerInfo.innerHTML = `<div class="card" style="border-left-color:var(--green); justify-content:center; padding:20px;"><b style="color:var(--green); font-size:18px;">Ты свободен!</b></div>`;
@@ -566,12 +561,10 @@
             const data = await res.json();
             const list = document.getElementById('case-loot-list');
             list.innerHTML = '';
-            
             data.loot.forEach(item => {
                 let color = "var(--text)";
                 if (item.chance <= 5) color = "var(--gold)";
                 else if (item.chance <= 15) color = "var(--purple)";
-                
                 list.innerHTML += `
                     <div class="card" style="padding: 12px; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center;">
                         <div style="display:flex; gap:10px; align-items:center;">
@@ -584,7 +577,6 @@
             });
             document.getElementById('case-info-modal').style.display = 'flex';
         }
-
         function closeCaseInfo() { document.getElementById('case-info-modal').style.display = 'none'; }
 
         async function openCase() {
@@ -616,7 +608,6 @@
                 }
             }, 3000);
         }
-
         function closeCaseModal() { document.getElementById('case-modal').style.display = 'none'; }
 
         function openCustom() {
@@ -632,7 +623,6 @@
             });
             document.getElementById('custom-modal').style.display = 'flex';
         }
-
         function closeCustom() { document.getElementById('custom-modal').style.display = 'none'; }
 
         async function equipFrame(frame) {
@@ -641,14 +631,12 @@
             if (data.success) { showToast(data.msg); loadState(userName); closeCustom(); } 
             else showToast(data.error, 'error');
         }
-
         async function changeColor(color, el) {
             const res = await fetch('/api/change_color', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, color: color }) });
             const data = await res.json();
             if (data.success) { showToast(data.msg); loadState(userName); document.querySelectorAll('.color-item').forEach(c => c.classList.remove('active')); el.classList.add('active'); } 
             else showToast(data.error, 'error');
         }
-
         async function buyFrame(frame, currency) {
             const res = await fetch('/api/buy_frame', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, frame: frame, currency: currency }) });
             const data = await res.json();
@@ -728,6 +716,12 @@
             const res = await fetch('/api/redeem', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
             const data = await res.json();
             if (data.success) { tg.HapticFeedback.notificationOccurred('success'); showToast('Ты свободен!'); loadState(userName); } else showToast(data.error, 'error');
+        }
+        async function hireAssassin() {
+            if(!confirm("Нанять убийцу за 100 💎? Это мгновенно освободит тебя.")) return;
+            const res = await fetch('/api/hire_assassin', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
+            const data = await res.json();
+            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); showToast(data.msg); loadState(userName); } else showToast(data.error, 'error');
         }
         async function cheatMoney() {
             const res = await fetch('/api/admin_cheat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, amount: 10000, type: "gold" }) });
