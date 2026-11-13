@@ -31,7 +31,6 @@ npcs = {
     "npc_dragon": {"name": "🐉 Дракон", "rarity": "Легендарный", "price": 0, "base_income": 500, "level": 1, "owner_id": None, "is_npc": True}
 }
 
-# ДОБАВИЛИ АВАТАРКИ И ИХ ВЫПАДЕНИЕ
 CASE_LOOT = [
     {"type": "gold", "value": 5000, "weight": 35, "msg": "Выпало 5 000 золота!", "icon": "💰"},
     {"type": "gold", "value": 10000, "weight": 15, "msg": "Выпало 10 000 золота!", "icon": "💰"},
@@ -113,11 +112,32 @@ async def background_event_checker():
         now = time.time()
         if (now - SERVER_START_TIME) >= EVENT_DURATION and not EVENT_ENDED:
             EVENT_ENDED = True
-            top_refs = sorted(users.values(), key=lambda x: x.get("event_ref_count", 0), reverse=True)[:3]
+            # Сортируем по event_ref_count
+            top_refs = sorted(users.values(), key=lambda x: x.get("event_ref_count", 0), reverse=True)[:10]
+            
             for i, u in enumerate(top_refs):
                 if u.get("event_ref_count", 0) > 0:
-                    u["crystals"] += 500 if i == 0 else 250 if i == 1 else 100
-                    u["is_star"] = True
+                    # Награды для топ-10
+                    if i == 0: # 1 место
+                        u["crystals"] += 1000
+                        u["is_star"] = True
+                        u["is_oligarch"] = True
+                        if "avatar_3" not in u["inventory"]: u["inventory"].append("avatar_3")
+                        if "frame_neon" not in u["inventory"]: u["inventory"].append("frame_neon")
+                        u["name_color"] = "#ffd700"
+                        npcs["npc_dragon"]["owner_id"] = str(u.get("game_id")) # Даем Дракона
+                        try: await bot.send_message(int(u["tg_id"]), "🏆 ВЫ ПОБЕДИЛИ В ИВЕНТЕ! Вы получили 1000 💎, Дракона, Аватарку, Рамку и Золотой ник!")
+                        except: pass
+                    elif i < 3: # 2-3 место
+                        u["crystals"] += 500
+                        u["is_star"] = True
+                        if "avatar_2" not in u["inventory"]: u["inventory"].append("avatar_2")
+                        try: await bot.send_message(int(u["tg_id"]), f"🥈 Вы заняли {i+1} место в ивенте! Вы получили 500 💎, Аватарку и статус Звезды!")
+                        except: pass
+                    else: # 4-10 место
+                        u["crystals"] += 200
+                        try: await bot.send_message(int(u["tg_id"]), f"🎖 Вы вошли в Топ-10 ивента! Вы получили 200 💎!")
+                        except: pass
         await asyncio.sleep(3600)
 
 async def handle_index(request):
@@ -170,12 +190,11 @@ async def handle_state(request):
     can_watch_ad = (now - me["last_ad_watch"]) > 3600
     can_boost = (now - me.get("last_boost", 0)) > (4 * 3600)
 
+    # УБИРАЕМ NPC ИЗ РЫНКА (ОСТАВЛЯЕМ ТОЛЬКО ИГРОКОВ)
     market = []
     for uid, u in users.items():
         if uid != user_id:
             market.append({"id": uid, "name": u["name"], "owner_id": u["owner_id"], "price": 1000 + (len(u["name"]) * 10), "rarity": "Игрок", "is_npc": False, "game_id": u["game_id"], "shield": u.get("shield_until", 0) > now, "frame": u.get("frame", "frame_basic"), "name_color": u.get("name_color", "#ffffff"), "is_star": u.get("is_star", False), "income": 50, "avatar": u.get("avatar", "avatar_1")})
-    for uid, n in npcs.items():
-        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True, "game_id": None, "shield": False, "frame": "frame_basic", "name_color": "#ffffff", "is_star": False, "income": n["base_income"] * n["level"], "avatar": f"{uid}.jpg"})
 
     my_owner = None
     if me["owner_id"] and me["owner_id"] in all_entities:
@@ -201,10 +220,17 @@ async def handle_state(request):
         "event_time_left": time_left, "has_event_buff": me.get("event_buff_until", 0) > now
     })
 
-async def handle_get_top_refs(request):
+async def handle_event_info(request):
     top = sorted(users.values(), key=lambda x: x.get("event_ref_count", 0), reverse=True)[:10]
     res = [{"name": u["name"], "count": u.get("event_ref_count", 0), "is_star": u.get("is_star", False)} for u in top if u.get("event_ref_count", 0) > 0]
-    return web.json_response({"top": res})
+    
+    rewards = [
+        {"place": "1 место", "reward": "Дракон 🐉, 1000 💎, Аватарка, Рамка, Золотой ник", "icon": "🥇"},
+        {"place": "2-3 место", "reward": "500 💎, Аватарка 'Рыцарь', Статус Звезды ⭐", "icon": "🥈"},
+        {"place": "4-10 место", "reward": "200 💎", "icon": "🎖"}
+    ]
+    
+    return web.json_response({"top": res, "rewards": rewards})
 
 async def handle_buy_avatar(request):
     data = await request.json()
@@ -212,7 +238,7 @@ async def handle_buy_avatar(request):
     avatar = data.get("avatar")
     me = users.get(user_id)
     
-    avatars_db = {"avatar_2": 100, "avatar_3": 150} # Цены в кристаллах
+    avatars_db = {"avatar_2": 100, "avatar_3": 150}
     if avatar not in avatars_db: return web.json_response({"success": False})
     
     cost = avatars_db[avatar]
@@ -233,8 +259,7 @@ async def handle_equip_avatar(request):
         return web.json_response({"success": True, "msg": "Аватарка надета!"})
     return web.json_response({"success": False, "error": "Аватарка не найдена"})
 
-# ... (ОСТАЛЬНЫЕ ФУНКЦИИ: handle_get_profile, handle_find_by_game_id, handle_get_refs, handle_admin_action, handle_boost, handle_case_info, handle_collect, handle_work, handle_daily, handle_watch_ad, handle_buy, handle_hire_assassin, handle_redeem, handle_upgrade, handle_admin_cheat, handle_buy_item, handle_open_case, handle_equip_frame, handle_change_color, handle_buy_frame) ...
-# ВСТАВЬ ИХ СЮДА ИЗ ПРЕДЫДУЩЕГО КОДА. Я ДОБАВИЛ ТОЛЬКО ОБНОВЛЕНИЕ ДЛЯ handle_open_case И handle_get_profile.
+# ... (ВСТАВЬ СЮДА ОСТАЛЬНЫЕ ФУНКЦИИ: handle_get_profile, handle_find_by_game_id, handle_get_refs, handle_admin_action, handle_boost, handle_case_info, handle_collect, handle_work, handle_daily, handle_watch_ad, handle_buy, handle_hire_assassin, handle_redeem, handle_upgrade, handle_admin_cheat, handle_buy_item, handle_open_case, handle_equip_frame, handle_change_color, handle_buy_frame) ...
 
 async def handle_get_profile(request):
     target_id = request.query.get("target_id")
@@ -499,10 +524,10 @@ async def main():
     app.router.add_get('/api/profile', handle_get_profile)
     app.router.add_get('/api/find_by_game_id', handle_find_by_game_id)
     app.router.add_get('/api/refs', handle_get_refs)
-    app.router.add_get('/api/top_refs', handle_get_top_refs) # НОВОЕ
+    app.router.add_get('/api/event_info', handle_event_info) # НОВОЕ
     app.router.add_post('/api/admin_action', handle_admin_action)
-    app.router.add_post('/api/buy_avatar', handle_buy_avatar) # НОВОЕ
-    app.router.add_post('/api/equip_avatar', handle_equip_avatar) # НОВОЕ
+    app.router.add_post('/api/buy_avatar', handle_buy_avatar)
+    app.router.add_post('/api/equip_avatar', handle_equip_avatar)
     app.router.add_post('/api/work', handle_work)
     app.router.add_post('/api/collect', handle_collect)
     app.router.add_post('/api/daily', handle_daily)
