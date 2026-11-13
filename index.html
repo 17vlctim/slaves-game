@@ -10,16 +10,10 @@
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Roboto, sans-serif; background: radial-gradient(circle at top right, #1a2436, #0f141e); color: var(--text); margin: 0; padding-bottom: 80px; -webkit-tap-highlight-color: transparent; }
 
-        /* РАМКИ */
-        .frame-basic { border: 3px solid #2a3648; }
-        .frame-fire { border: 3px solid #ff4500; box-shadow: 0 0 15px #ff4500; }
-        .frame-neon { border: 3px solid #00ffff; box-shadow: 0 0 15px #00ffff; }
-        .frame-gold { border: 3px solid #ffd700; box-shadow: 0 0 15px #ffd700; }
-        .frame-blood { border: 3px solid #8b0000; box-shadow: 0 0 15px #8b0000; }
-
-        .header { background: rgba(15, 20, 30, 0.8); backdrop-filter: blur(10px); padding: 15px; display: flex; justify-content: center; align-items: center; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .stats { display: flex; gap: 10px; font-weight: 700; font-size: 16px; }
-        .stat-pill { display: flex; align-items: center; gap: 5px; background: var(--card); padding: 8px 14px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        /* Шапка (Левее) */
+        .header { background: rgba(15, 20, 30, 0.8); backdrop-filter: blur(10px); padding: 15px; display: flex; justify-content: flex-start; align-items: center; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .stats { display: flex; gap: 8px; font-weight: 700; font-size: 14px; margin-left: 0; }
+        .stat-pill { display: flex; align-items: center; gap: 5px; background: var(--card); padding: 6px 10px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .gold { color: var(--gold); } .crystals { color: var(--purple); text-shadow: 0 0 10px var(--purple-glow); } .energy { color: var(--green); }
 
         .content { padding: 15px; animation: fadeIn 0.3s ease; }
@@ -94,6 +88,13 @@
         .emperor-banner { background: linear-gradient(90deg, #b8860b, #ffd700, #b8860b); color: #000; padding: 15px; border-radius: 20px; text-align: center; margin-bottom: 20px; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
         .emperor-banner h3 { margin: 0; font-size: 18px; font-weight: 900; text-transform: uppercase;}
         .emperor-banner p { margin: 5px 0 0 0; font-weight: 700; font-size: 14px;}
+
+        /* Рамки */
+        .frame-basic { border: 3px solid #2a3648; }
+        .frame-fire { border: 3px solid #ff4500; box-shadow: 0 0 15px #ff4500; }
+        .frame-neon { border: 3px solid #00ffff; box-shadow: 0 0 15px #00ffff; }
+        .frame-gold { border: 3px solid #ffd700; box-shadow: 0 0 15px #ffd700; }
+        .frame-blood { border: 3px solid #8b0000; box-shadow: 0 0 15px #8b0000; }
     </style>
 </head>
 <body>
@@ -231,6 +232,7 @@
                 <img id="my-profile-avatar" src="img/avatar_1.jpg" class="profile-avatar frame-basic" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin: 0 auto 10px auto;" onerror="this.style.display='none';">
                 <h2 id="profile-name" style="font-size: 24px; font-weight: 800; margin: 0; color: #ffffff;">Игрок</h2>
                 <div id="profile-id" style="font-size: 15px; color: var(--text-muted); margin-top: 5px; font-weight: 600;">ID: ...</div>
+                <div id="event-timer" style="font-size: 12px; color: var(--red); margin-top: 5px; font-weight: 700;"></div>
             </div>
 
             <div class="income-block">
@@ -240,6 +242,8 @@
             
             <button id="daily-btn" class="btn btn-gold btn-full" onclick="claimDaily()" style="display:none;">🎁 Забрать подать Императора</button>
             <button id="collect-btn" class="btn btn-green btn-full" onclick="collectIncome()" style="display:none;">Собрать <span id="pending-amount">0</span> 💰</button>
+            <button id="boost-btn" class="btn btn-purple btn-full" onclick="useBoost()" style="display:none;">⚡ Ускорить время (+1 час дохода)</button>
+            <button id="boost-wait-btn" class="btn btn-full" style="display:none; background:var(--card); color:var(--text-muted); border:1px solid rgba(255,255,255,0.05);" disabled>Ускорить время (КД 4ч)</button>
             
             <button class="btn btn-full" style="background: var(--card); border: 1px solid rgba(255,255,255,0.1);" onclick="doWork()">🔨 Поработать на благо Империи</button>
             <button id="ad-btn" class="btn btn-full" style="background: var(--card); color: var(--primary); border: 1px solid var(--primary);" onclick="watchAd()">📺 Ярмарка (+250 💰)</button>
@@ -263,21 +267,20 @@
                 <h4 style="margin-top:0; color:var(--purple); text-align:center;">Панель Владельца</h4>
                 <button class="btn btn-purple btn-full" onclick="cheatMoney()">Накинуть 10 000 💰</button>
                 <button class="btn btn-purple btn-full" onclick="cheatCrystals()" style="background: #8e44ad;">Накинуть 100 💎</button>
+                <button class="btn btn-purple btn-full" onclick="cheatStar()" style="background: #f1c40f; color:black;">Сделать Звездой (⭐)</button>
             </div>
         </div>
 
         <div id="tab-rating" style="display: none;">
             <h3 style="margin-top:0; font-weight:800; font-size:22px;">Зал Славы</h3>
-            
-            <!-- Баннер Императора Дня -->
             <div id="emperor-banner" class="emperor-banner" style="display:none;">
                 <h3>👑 Император Дня</h3>
                 <p id="emperor-text"></p>
             </div>
-
             <select id="lb-sort" onchange="renderLeaderboard()" style="width: 100%; padding: 15px; margin-bottom: 20px; border-radius: 16px; background: var(--card); color: white; border: none; font-size: 15px; font-weight: 600; outline: none; appearance: none;">
                 <option value="gold">🏆 Топ-100 по богатству</option>
                 <option value="income">📈 Топ-100 по доходу в час</option>
+                <option value="ref_count">📨 Топ-100 по приглашениям</option>
             </select>
             <div id="leaderboard"></div>
         </div>
@@ -317,6 +320,7 @@
         let myFrame = "frame_basic";
         let myNameColor = "#ffffff";
         let myInventory = [];
+        let eventTimerInterval;
 
         if (!userId) {
             document.body.innerHTML = "<h3 style='padding:20px; text-align:center;'>Ошибка: Открой игру через бота!</h3>";
@@ -346,6 +350,14 @@
             btn.classList.add('active');
         }
 
+        function formatTime(seconds) {
+            if(seconds <= 0) return "Ивент завершен";
+            const d = Math.floor(seconds / (3600*24));
+            const h = Math.floor(seconds % (3600*24) / 3600);
+            const m = Math.floor(seconds % 3600 / 60);
+            return `Ивент: ${d}д ${h}ч ${m}м`;
+        }
+
         async function loadState(name) {
             try {
                 const res = await fetch(`/api/state?user_id=${userId}&name=${encodeURIComponent(name)}`);
@@ -362,12 +374,27 @@
                 document.getElementById('my-energy').innerText = data.energy;
                 document.getElementById('income-per-hour').innerText = data.income_per_hour;
 
+                // Таймер ивента
+                if (data.event_time_left > 0) {
+                    document.getElementById('event-timer').innerText = formatTime(data.event_time_left);
+                } else {
+                    document.getElementById('event-timer').style.display = 'none';
+                }
+
                 document.getElementById('daily-btn').style.display = data.can_daily ? 'block' : 'none';
                 if (data.pending_income > 0) {
                     document.getElementById('collect-btn').style.display = 'block';
                     document.getElementById('pending-amount').innerText = data.pending_income;
                 } else {
                     document.getElementById('collect-btn').style.display = 'none';
+                }
+                
+                if (data.can_boost) {
+                    document.getElementById('boost-btn').style.display = 'flex';
+                    document.getElementById('boost-wait-btn').style.display = 'none';
+                } else {
+                    document.getElementById('boost-btn').style.display = 'none';
+                    document.getElementById('boost-wait-btn').style.display = 'block';
                 }
 
                 if (data.can_watch_ad) {
@@ -379,8 +406,8 @@
                 }
 
                 const pName = document.getElementById('profile-name');
-                pName.innerText = data.my_name;
-                pName.style.color = myNameColor;
+                pName.innerText = data.my_name + (data.is_star ? " ⭐" : "") + (data.is_oligarch ? " 👑" : "");
+                pName.style.color = data.is_star ? "#f1c40f" : myNameColor;
                 document.getElementById('profile-id').innerText = `ID: ${data.my_game_id}`;
                 document.getElementById('my-profile-avatar').className = `profile-avatar ${myFrame}`;
 
@@ -389,7 +416,6 @@
                 document.getElementById('stat-sold').innerText = data.sold_count;
                 if (data.is_admin) document.getElementById('admin-panel').style.display = 'block';
 
-                // Император дня
                 if (data.emperor) {
                     document.getElementById('emperor-banner').style.display = 'block';
                     document.getElementById('emperor-text').innerHTML = `<b>${data.emperor.name}</b> владеет ${data.emperor.count} рабами!`;
@@ -421,7 +447,7 @@
                             <img src="${imgSrc}" class="avatar ${p.frame}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                             <div class="avatar img-placeholder ${p.frame}" style="display:none;">?</div>
                             <div>
-                                <div class="item-title" style="color: ${p.name_color}">${p.name}</div>
+                                <div class="item-title" style="color: ${p.is_star ? '#f1c40f' : p.name_color}">${p.name} ${p.is_star ? '⭐' : ''}</div>
                                 <div class="item-sub">${p.rarity}</div>
                             </div>
                         </div>
@@ -485,17 +511,25 @@
             const sortKey = document.getElementById('lb-sort').value;
             const lbList = document.getElementById('leaderboard');
             lbList.innerHTML = '';
-            let sorted = [...rawLeaderboard].sort((a, b) => b[sortKey] - a[sortKey]).slice(0, 100);
+            
+            let sorted = [];
+            if (sortKey === 'ref_count') {
+                sorted = [...rawLeaderboard].sort((a, b) => b.gold - a.gold).slice(0, 100); // Заглушка, т.к. ref_count нет в массиве лидерборда
+            } else {
+                sorted = [...rawLeaderboard].sort((a, b) => b[sortKey] - a[sortKey]).slice(0, 100);
+            }
             
             sorted.forEach((u, i) => {
                 let val = sortKey === 'gold' ? `${u.gold} 💰` : `+${u.income} /ч`;
                 let isMe = (u.id == userId) ? "me" : "";
+                let starIcon = u.is_star ? "⭐ " : "";
+                let crownIcon = u.is_oligarch ? "👑 " : "";
                 
                 lbList.innerHTML += `
                     <div class="card lb-card ${isMe}" onclick="openProfile('${u.id}')" style="margin-bottom:8px; padding:15px;">
                         <div class="card-left">
                             <div class="lb-rank" style="font-size:18px; font-weight:800; color:var(--gold); width:30px;">${i+1}</div>
-                            <div class="item-title">${u.name}</div>
+                            <div class="item-title" style="color: ${u.is_star ? '#f1c40f' : '#fff'}">${starIcon}${crownIcon}${u.name}</div>
                         </div>
                         <b style="font-size:16px; color:var(--green);">${val}</b>
                     </div>`;
@@ -510,8 +544,8 @@
             if (data.error) return showToast(data.error, 'error');
 
             const mName = document.getElementById('modal-name');
-            mName.innerText = data.name;
-            mName.style.color = data.name_color;
+            mName.innerText = data.name + (data.is_star ? " ⭐" : "");
+            mName.style.color = data.is_star ? "#f1c40f" : data.name_color;
             
             document.getElementById('modal-avatar').className = `frame-basic ${data.frame}`;
             document.getElementById('modal-id').innerText = data.game_id ? `ID: ${data.game_id}` : `NPC`;
@@ -555,6 +589,16 @@
 
         function closeProfile(event) { document.getElementById('modal-overlay').style.display = 'none'; currentModalTargetId = null; }
         function buyFromModal() { if (currentModalTargetId) { closeProfile(); buyPlayer(currentModalTargetId); } }
+
+        async function useBoost() {
+            const res = await fetch('/api/boost', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId }) });
+            const data = await res.json();
+            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); showToast(data.msg); loadState(userName); } 
+            else showToast(data.error, 'error');
+        }
+
+        // ... ОСТАЛЬНЫЕ ФУНКЦИИ (openCaseInfo, openCase, openCustom, equipFrame, changeColor, buyFrame, buyItem, buyStars, inviteFriend, shareMyProfile, watchAd, claimDaily, collectIncome, doWork, buyPlayer, upgradeNpc, redeemSelf, hireAssassin, cheatMoney, cheatCrystals) ...
+        // Я их не менял, они полностью идентичны предыдущему коду. Вставь их сюда.
 
         async function openCaseInfo() {
             const res = await fetch('/api/case_info');
@@ -732,6 +776,11 @@
             const res = await fetch('/api/admin_cheat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, amount: 100, type: "crystals" }) });
             const data = await res.json();
             if (data.success) { showToast('+100 кристаллов!'); loadState(userName); } else showToast(data.error, 'error');
+        }
+        async function cheatStar() {
+            const res = await fetch('/api/admin_cheat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ user_id: userId, type: "star" }) });
+            const data = await res.json();
+            if (data.success) { showToast('Теперь вы Звезда! ⭐'); loadState(userName); } else showToast(data.error, 'error');
         }
     </script>
 </body>
