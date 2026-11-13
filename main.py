@@ -7,7 +7,6 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command, CommandObject
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
-# --- НАСТРОЙКИ ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 ADMIN_ID = str(os.environ.get("ADMIN_ID", ""))
 WEB_URL = "https://slaves-game.onrender.com" 
@@ -87,7 +86,6 @@ def update_energy(user):
         user["energy"] = min(100, user["energy"] + regen)
         user["last_energy_update"] = now
 
-# --- API ---
 async def handle_index(request):
     return web.FileResponse('index.html')
 
@@ -105,6 +103,15 @@ async def handle_state(request):
     income_per_hour = 0
     all_users_rating = []
     
+    # Ищем Императора дня (максимум рабов)
+    max_slaves = -1
+    emperor_of_day = None
+    for uid, u in users.items():
+        slaves_count = sum(1 for s in all_entities.values() if s.get("owner_id") == uid)
+        if slaves_count > max_slaves:
+            max_slaves = slaves_count
+            emperor_of_day = {"name": u["name"], "count": slaves_count}
+            
     for uid, u in users.items():
         u_inc = 0
         for s in all_entities.values():
@@ -150,8 +157,12 @@ async def handle_state(request):
         "my_name": me["name"], "my_game_id": me["game_id"],
         "ref_count": me.get("ref_count", 0), "bought_count": me.get("bought_count", 0), "sold_count": me.get("sold_count", 0),
         "bot_username": bot_info.username,
-        "my_frame": me.get("frame", "frame_basic"), "my_name_color": me.get("name_color", "#ffffff"), "my_inventory": me.get("inventory", [])
+        "my_frame": me.get("frame", "frame_basic"), "my_name_color": me.get("name_color", "#ffffff"), "my_inventory": me.get("inventory", []),
+        "emperor": emperor_of_day
     })
+
+# ... (функции case_info, user_info, collect, work, daily, watch_ad, buy, redeem, upgrade, admin_cheat, buy_item, open_case, equip_frame, change_color, buy_frame остаются без изменений) ...
+# Я вставлю их сюда для полноты картины, скопируй их из предыдущего кода или просто не удаляй при замене.
 
 async def handle_case_info(request):
     total_weight = sum(item["weight"] for item in CASE_LOOT)
@@ -193,9 +204,6 @@ async def handle_user_info(request):
     if target_user["owner_id"] and target_user["owner_id"] in all_entities:
         target_owner_name = all_entities[target_user["owner_id"]]["name"]
     return web.json_response({"name": target_user["name"], "gold": target_user["gold"], "income": target_income, "slaves": target_slaves, "owner_name": target_owner_name, "id": target_id, "game_id": target_user["game_id"], "frame": target_user.get("frame", "frame_basic"), "name_color": target_user.get("name_color", "#ffffff")})
-
-# ... (Функции handle_collect, handle_work, handle_daily, handle_watch_ad, handle_buy, handle_redeem, handle_upgrade, handle_admin_cheat, handle_buy_item, handle_open_case, handle_equip_frame, handle_change_color, handle_buy_frame) ...
-# ВСТАВЬ ИХ СЮДА ИЗ ПРЕДЫДУЩЕГО СООБЩЕНИЯ. Я НЕ МЕНЯЛ ИХ ЛОГИКУ.
 
 async def handle_collect(request):
     data = await request.json(); user_id = str(data.get("user_id")); me = users.get(user_id)
@@ -242,10 +250,40 @@ async def handle_buy(request):
     if target["owner_id"]: return web.json_response({"success": False, "error": "Уже куплен!"})
     if target_id == buyer_id: return web.json_response({"success": False, "error": "Нельзя себя!"})
     if target_id == buyer["owner_id"]: return web.json_response({"success": False, "error": "Нельзя владельца!"})
+    
     buyer["gold"] -= price; target["owner_id"] = buyer_id
     buyer["bought_count"] = buyer.get("bought_count", 0) + 1
     if not target.get("is_npc"): target["sold_count"] = target.get("sold_count", 0) + 1
+    
+    # УВЕДОМЛЕНИЕ В TELEGRAM
+    if not target.get("is_npc"):
+        try:
+            await bot.send_message(
+                int(target_id), 
+                f"😡 <b>{buyer['name']}</b> купил тебя за <b>{price} монет</b>!\nТы теперь его раб. Зайди в игру и выкупи себя или найми убийцу!"
+            )
+        except Exception as e:
+            print(f"Не удалось отправить уведомление: {e}")
+
     return web.json_response({"success": True})
+
+async def handle_hire_assassin(request):
+    data = await request.json(); user_id = str(data.get("user_id")); me = users.get(user_id)
+    if not me or not me.get("owner_id"): return web.json_response({"success": False, "error": "Ты не раб!"})
+    
+    if me["crystals"] < 100: return web.json_response({"success": False, "error": "Нужно 100 💎!"})
+    
+    me["crystals"] -= 100
+    owner_id = me["owner_id"]
+    owner_name = users[owner_id]["name"] if owner_id in users else "Неизвестный"
+    me["owner_id"] = None
+    
+    # Уведомление бывшему владельцу
+    try:
+        await bot.send_message(int(owner_id), f"🔪 <b>{me['name']}</b> нанял убийцу и сбежал от тебя!")
+    except: pass
+
+    return web.json_response({"success": True, "msg": f"Ты заплатил убийце и сбежал от {owner_name}!"})
 
 async def handle_redeem(request):
     data = await request.json(); user_id = str(data.get("user_id")); me = users.get(user_id)
@@ -294,22 +332,18 @@ async def handle_open_case(request):
     data = await request.json(); user_id = str(data.get("user_id")); me = users.get(user_id)
     if not me: return web.json_response({"success": False})
     if me["crystals"] < 25: return web.json_response({"success": False, "error": "Нужно 25 кристаллов!"})
-
     me["crystals"] -= 25
     total_weight = sum(item["weight"] for item in CASE_LOOT)
     rand_val = random.uniform(0, total_weight)
     current_weight = 0
     selected_loot = CASE_LOOT[0]
-
     for item in CASE_LOOT:
         current_weight += item["weight"]
         if rand_val <= current_weight:
             selected_loot = item
             break
-
     loot_msg = selected_loot["msg"]
     loot_type = selected_loot["type"]
-    
     if loot_type == "gold": me["gold"] += selected_loot["value"]
     elif loot_type == "income_10h":
         income_per_hour = 0
@@ -327,7 +361,6 @@ async def handle_open_case(request):
         else:
             me["gold"] += 15000
             loot_msg = "Дракон уже занят. Компенсация: 15 000 золота!"
-
     return web.json_response({"success": True, "msg": loot_msg})
 
 async def handle_equip_frame(request):
@@ -360,7 +393,6 @@ async def handle_buy_frame(request):
         return web.json_response({"success": True, "msg": "Рамка куплена!"})
     return web.json_response({"success": False, "error": "Не хватает средств!"})
 
-
 async def main():
     app = web.Application()
     app.router.add_get('/', handle_index)
@@ -381,12 +413,12 @@ async def main():
     app.router.add_post('/api/equip_frame', handle_equip_frame)
     app.router.add_post('/api/change_color', handle_change_color)
     app.router.add_post('/api/buy_frame', handle_buy_frame)
+    app.router.add_post('/api/hire_assassin', handle_hire_assassin)
 
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
-    
     print(f"✅ Сервер запущен на порту {PORT}")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
