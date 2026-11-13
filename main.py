@@ -21,6 +21,7 @@ dp = Dispatcher()
 
 SERVER_START_TIME = time.time()
 EVENT_DURATION = 7 * 24 * 60 * 60 # 7 дней
+EVENT_ENDED = False
 
 users = {}
 npcs = {
@@ -55,24 +56,29 @@ def create_user(user_id, name, referrer_id=None):
         is_event_active = (now - SERVER_START_TIME) < EVENT_DURATION
 
         if referrer_id and referrer_id in users:
+            # Если ивент активен, даем больше бонусов и бафф пригласившему
             if is_event_active:
                 start_gold += 1000
                 start_crystals += 20
                 users[referrer_id]["gold"] += 1000
                 users[referrer_id]["crystals"] += 20
+                users[referrer_id]["event_buff_until"] = now + (24 * 3600) # Бафф на 24 часа
+                users[referrer_id]["ref_count"] = users[referrer_id].get("ref_count", 0) + 1
+                users[referrer_id]["event_ref_count"] = users[referrer_id].get("event_ref_count", 0) + 1
             else:
                 start_gold += 500 
                 users[referrer_id]["gold"] += 500
-            users[referrer_id]["ref_count"] = users[referrer_id].get("ref_count", 0) + 1
-
+                users[referrer_id]["ref_count"] = users[referrer_id].get("ref_count", 0) + 1
+                
         users[user_id] = {
             "name": name, "gold": start_gold, "crystals": start_crystals, "energy": 100, 
             "last_energy_update": time.time(), "owner_id": None, 
             "last_collected": time.time(), "last_daily": 0,
-            "last_ad_watch": 0, "ref_count": 0, "bought_count": 0, "sold_count": 0,
+            "last_ad_watch": 0, "ref_count": 0, "event_ref_count": 0, "bought_count": 0, "sold_count": 0,
             "game_id": fake_id, "shield_until": 0, "chains_until": 0,
             "frame": "frame_basic", "name_color": "#ffffff",
-            "inventory": [], "is_star": False, "is_oligarch": False, "last_boost": 0
+            "inventory": [], "is_star": False, "is_oligarch": False, "last_boost": 0,
+            "event_buff_until": 0
         }
     return users[user_id]
 
@@ -98,6 +104,24 @@ def update_energy(user):
         user["energy"] = min(100, user["energy"] + regen)
         user["last_energy_update"] = now
 
+async def background_event_checker():
+    global EVENT_ENDED
+    await asyncio.sleep(5) # Ждем запуска
+    while True:
+        now = time.time()
+        if (now - SERVER_START_TIME) >= EVENT_DURATION and not EVENT_ENDED:
+            EVENT_ENDED = True
+            # Определяем топ-3 по event_ref_count
+            top_refs = sorted(users.values(), key=lambda x: x.get("event_ref_count", 0), reverse=True)[:3]
+            for i, u in enumerate(top_refs):
+                if u.get("event_ref_count", 0) > 0:
+                    u["crystals"] += 500 if i == 0 else 250 if i == 1 else 100
+                    u["is_star"] = True
+                    try:
+                        await bot.send_message(int(u.get("tg_id", 0)) if u.get("tg_id") else 0, "🏆 Ивент завершен! Вы вошли в топ-3 по приглашениям и получили эксклюзивные награды!")
+                    except: pass
+        await asyncio.sleep(3600) # Проверяем раз в час
+
 async def handle_index(request):
     return web.FileResponse('index.html')
 
@@ -122,6 +146,8 @@ async def handle_state(request):
         except: pass
 
     star_multiplier = 1.5 if me.get("is_star") else 1.0
+    event_multiplier = 1.5 if me.get("event_buff_until", 0) > now else 1.0
+    total_multiplier = star_multiplier * event_multiplier
 
     for uid, u in users.items():
         u_inc = 0
@@ -140,7 +166,7 @@ async def handle_state(request):
             my_slaves.append({"id": uid, "name": n["name"], "rarity": n["rarity"], "level": n["level"], "income": inc, "is_npc": True, "game_id": None})
             income_per_hour += inc
 
-    income_per_hour = int(income_per_hour * star_multiplier)
+    income_per_hour = int(income_per_hour * total_multiplier)
 
     hours_passed = min(8, (now - me["last_collected"]) / 3600)
     pending_income = int(hours_passed * income_per_hour)
@@ -151,9 +177,9 @@ async def handle_state(request):
     market = []
     for uid, u in users.items():
         if uid != user_id:
-            market.append({"id": uid, "name": u["name"], "owner_id": u["owner_id"], "price": 1000 + (len(u["name"]) * 10), "rarity": "Игрок", "is_npc": False, "game_id": u["game_id"], "shield": u.get("shield_until", 0) > now, "frame": u.get("frame", "frame_basic"), "name_color": u.get("name_color", "#ffffff"), "is_star": u.get("is_star", False)})
+            market.append({"id": uid, "name": u["name"], "owner_id": u["owner_id"], "price": 1000 + (len(u["name"]) * 10), "rarity": "Игрок", "is_npc": False, "game_id": u["game_id"], "shield": u.get("shield_until", 0) > now, "frame": u.get("frame", "frame_basic"), "name_color": u.get("name_color", "#ffffff"), "is_star": u.get("is_star", False), "income": 50})
     for uid, n in npcs.items():
-        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True, "game_id": None, "shield": False, "frame": "frame_basic", "name_color": "#ffffff", "is_star": False})
+        market.append({"id": uid, "name": n["name"], "owner_id": n["owner_id"], "price": n["price"], "rarity": n["rarity"], "is_npc": True, "game_id": None, "shield": False, "frame": "frame_basic", "name_color": "#ffffff", "is_star": False, "income": n["base_income"] * n["level"]})
 
     my_owner = None
     if me["owner_id"] and me["owner_id"] in all_entities:
@@ -175,20 +201,18 @@ async def handle_state(request):
         "bot_username": bot_info.username,
         "my_frame": me.get("frame", "frame_basic"), "my_name_color": me.get("name_color", "#ffffff"), "my_inventory": me.get("inventory", []),
         "is_star": me.get("is_star", False), "is_oligarch": me.get("is_oligarch", False),
-        "event_time_left": time_left
+        "event_time_left": time_left, "has_event_buff": me.get("event_buff_until", 0) > now
     })
 
-# НОВЫЕ ФУНКЦИИ ДЛЯ ПРОСМОТРА ПРОФИЛЕЙ И АДМИНКИ
+# ... (ОСТАЛЬНЫЕ ФУНКЦИИ handle_get_profile, handle_find_by_game_id, handle_get_refs, handle_admin_action, handle_boost, handle_case_info, handle_collect, handle_work, handle_daily, handle_watch_ad, handle_buy, handle_hire_assassin, handle_redeem, handle_upgrade, handle_admin_cheat, handle_buy_item, handle_open_case, handle_equip_frame, handle_change_color, handle_buy_frame) ...
+
 async def handle_get_profile(request):
     target_id = request.query.get("target_id")
     if not target_id: return web.json_response({"error": "No ID"}, status=400)
     target_user = users.get(target_id)
     if not target_user: return web.json_response({"error": "Игрок не найден"}, status=404)
-    
     all_entities = {**users, **npcs}
-    target_income = 0
-    target_slaves = []
-    
+    target_income, target_slaves = 0, []
     for uid, u in all_entities.items():
         if u["owner_id"] == target_id:
             if u.get("is_npc"):
@@ -198,18 +222,10 @@ async def handle_get_profile(request):
                 inc = 50
                 target_slaves.append({"id": uid, "name": u["name"], "rarity": "Игрок", "income": inc, "is_npc": False, "game_id": u["game_id"]})
             target_income += inc
-            
     target_owner_name = None
     if target_user["owner_id"] and target_user["owner_id"] in all_entities:
         target_owner_name = all_entities[target_user["owner_id"]]["name"]
-        
-    return web.json_response({
-        "id": target_id, "name": target_user["name"], "gold": target_user["gold"], "crystals": target_user["crystals"],
-        "income": target_income, "slaves": target_slaves, "owner_name": target_owner_name,
-        "game_id": target_user["game_id"], "frame": target_user.get("frame", "frame_basic"),
-        "name_color": target_user.get("name_color", "#ffffff"), "is_star": target_user.get("is_star", False),
-        "is_oligarch": target_user.get("is_oligarch", False), "ref_count": target_user.get("ref_count", 0)
-    })
+    return web.json_response({"id": target_id, "name": target_user["name"], "gold": target_user["gold"], "crystals": target_user["crystals"], "income": target_income, "slaves": target_slaves, "owner_name": target_owner_name, "game_id": target_user["game_id"], "frame": target_user.get("frame", "frame_basic"), "name_color": target_user.get("name_color", "#ffffff"), "is_star": target_user.get("is_star", False), "is_oligarch": target_user.get("is_oligarch", False), "ref_count": target_user.get("ref_count", 0)})
 
 async def handle_find_by_game_id(request):
     game_id = request.query.get("game_id")
@@ -230,22 +246,15 @@ async def handle_get_refs(request):
 
 async def handle_admin_action(request):
     data = await request.json()
-    admin_id = str(data.get("admin_id"))
-    target_id = str(data.get("target_id"))
-    action = data.get("action")
-    amount = int(data.get("amount", 0))
-    
+    admin_id = str(data.get("admin_id")); target_id = str(data.get("target_id")); action = data.get("action"); amount = int(data.get("amount", 0))
     if admin_id != ADMIN_ID: return web.json_response({"success": False, "error": "Вы не админ!"})
     target = users.get(target_id)
     if not target: return web.json_response({"success": False, "error": "Игрок не найден"})
-        
     if action == "gold": target["gold"] += amount; msg = f"Начислено {amount} золота"
     elif action == "crystals": target["crystals"] += amount; msg = f"Начислено {amount} кристаллов"
     elif action == "star": target["is_star"] = True; msg = "Выдан статус Звезды ⭐"
     else: return web.json_response({"success": False, "error": "Неизвестное действие"})
     return web.json_response({"success": True, "msg": msg})
-
-# ... ОСТАЛЬНЫЕ ФУНКЦИИ (handle_boost, case_info, user_info, collect, work, daily, watch_ad, buy, hire_assassin, redeem, upgrade, admin_cheat, buy_item, open_case, equip_frame, change_color, buy_frame) остаются БЕЗ ИЗМЕНЕНИЙ, скопируй их из предыдущего сообщения.
 
 async def handle_boost(request):
     data = await request.json(); user_id = str(data.get("user_id")); me = users.get(user_id); now = time.time()
@@ -280,7 +289,11 @@ async def handle_collect(request):
     income_per_hour = 0
     for u in {**users, **npcs}.values():
         if u["owner_id"] == user_id: income_per_hour += (u["base_income"] * u["level"]) if u.get("is_npc") else 50
-    if me.get("is_star"): income_per_hour = int(income_per_hour * 1.5)
+    
+    star_multiplier = 1.5 if me.get("is_star") else 1.0
+    event_multiplier = 1.5 if me.get("event_buff_until", 0) > time.time() else 1.0
+    income_per_hour = int(income_per_hour * star_multiplier * event_multiplier)
+
     now = time.time(); hours_passed = min(8, (now - me["last_collected"]) / 3600); pending = int(hours_passed * income_per_hour)
     if pending <= 0: return web.json_response({"success": False, "error": "Нечего забирать"})
     me["gold"] += pending; me["last_collected"] = now
@@ -442,15 +455,18 @@ async def handle_buy_frame(request):
     return web.json_response({"success": False, "error": "Не хватает средств!"})
 
 async def main():
+    # Запускаем фоновую задачу для ивента
+    asyncio.create_task(background_event_checker())
+    
     app = web.Application()
     app.router.add_get('/', handle_index)
     app.router.add_get('/app', handle_index)
     app.router.add_get('/api/state', handle_state)
     app.router.add_get('/api/case_info', handle_case_info)
-    app.router.add_get('/api/profile', handle_get_profile) # НОВОЕ
-    app.router.add_get('/api/find_by_game_id', handle_find_by_game_id) # НОВОЕ
-    app.router.add_get('/api/refs', handle_get_refs) # НОВОЕ
-    app.router.add_post('/api/admin_action', handle_admin_action) # НОВОЕ
+    app.router.add_get('/api/profile', handle_get_profile)
+    app.router.add_get('/api/find_by_game_id', handle_find_by_game_id)
+    app.router.add_get('/api/refs', handle_get_refs)
+    app.router.add_post('/api/admin_action', handle_admin_action)
     app.router.add_post('/api/work', handle_work)
     app.router.add_post('/api/collect', handle_collect)
     app.router.add_post('/api/daily', handle_daily)
