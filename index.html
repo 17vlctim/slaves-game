@@ -7,12 +7,12 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { 
-            --bg: #0a0a0a; /* Темный графит */
-            --card: #161616; /* Карточки */
+            --bg: #0a0a0a; 
+            --card: #161616; 
             --text: #f0f0f0; 
             --text-muted: #888;
-            --primary: #8b0000; /* Бордовый */
-            --gold: #d4af37; /* Золото */
+            --primary: #8b0000; 
+            --gold: #d4af37; 
             --green: #2ecc71;
             --purple: #4a148c;
         }
@@ -201,6 +201,7 @@
         <div class="stats">
             <div class="stat-pill gold"><span>💰</span> <span id="my-gold">0</span></div>
             <div class="stat-pill crystals"><span>💎</span> <span id="my-crystals">0</span></div>
+            <div class="stat-pill energy"><span>⚡</span> <span id="my-energy">0</span></div>
         </div>
     </div>
 
@@ -343,7 +344,6 @@
         let myInventory = [];
 
         if (!userId) {
-            // Фоллбек для теста в браузере
             const params = new URLSearchParams(window.location.search);
             userId = params.get("user_id");
             if (!userId) {
@@ -411,7 +411,7 @@
         async function searchPlayer() {
             const gameId = document.getElementById('market-search-input').value;
             if (!gameId) return showToast('Введите ID', 'error');
-            const res = await fetch(`/api/find_by_game_id?game_id=${gameId}`); // Упрощенно
+            const res = await fetch(`/api/find_by_game_id?game_id=${gameId}`);
             const data = await res.json();
             if (data.error) showToast('Не найден', 'error');
             else openProfile(data.user_id);
@@ -419,7 +419,7 @@
 
         async function loadState() {
             try {
-                const data = await apiFetch(`/api/state?user_id=${userId}`); // Фоллбек
+                const data = await apiFetch(`/api/state?user_id=${userId}`);
                 if (data.error) return;
 
                 botUsername = data.bot_username;
@@ -430,6 +430,7 @@
                 
                 document.getElementById('my-gold').innerText = data.gold;
                 document.getElementById('my-crystals').innerText = data.crystals;
+                document.getElementById('my-energy').innerText = data.energy;
                 document.getElementById('income-per-hour').innerText = data.income_per_hour;
 
                 if (data.event_time_left > 0) {
@@ -467,7 +468,7 @@
                     slavesList.innerHTML += `
                         <div class="card" style="padding: 10px;">
                             <div class="card-left">
-                                <img src="img/${s.avatar}.jpg" class="avatar" style="width:40px; height:40px;">
+                                <img src="img/${s.avatar}.jpg" class="avatar" style="width:40px; height:40px;" onerror="this.src='img/avatar_1.jpg'">
                                 <div>
                                     <div class="item-title" style="font-size:14px;">${s.name}</div>
                                     <div class="item-sub" style="font-size:12px;">+${s.income} 💰/ч</div>
@@ -586,19 +587,18 @@
         }
         function closeRefs() { document.getElementById('refs-modal').style.display = 'none'; }
 
+        // ОСТАЛЬНЫЕ ФУНКЦИИ
         async function useBoost() { const res = await apiFetch('/api/boost', 'POST', {user_id: userId}); const d = await res.json(); if(d.success){showToast(d.msg); loadState();} else showToast(d.error,'error'); }
-        async function openCaseInfo() { const res = await fetch('/api/case_info'); const d = await res.json(); /* ...рендер... */ }
+        async function openCaseInfo() { const res = await fetch('/api/case_info'); const d = await res.json(); /* ... */ }
         async function openCase() {
-            // ... логика анимации ...
+            // ... (Логика анимации) ...
             const res = await apiFetch('/api/open_case', 'POST', {user_id: userId});
             const data = await res.json();
-            // ... анимация ...
+            // ... (Анимация)
         }
         function closeCaseModal() { document.getElementById('case-modal').style.display = 'none'; }
         function openCustom() { document.getElementById('custom-modal').style.display = 'flex'; }
         function closeCustom() { document.getElementById('custom-modal').style.display = 'none'; }
-        
-        // ОСТАЛЬНЫЕ ФУНКЦИИ КНОПОК
         async function buyItem(item) { const res = await apiFetch('/api/buy_item', 'POST', {user_id: userId, item: item}); const d = await res.json(); if(d.success){showToast(d.msg); loadState();} else showToast(d.error,'error'); }
         async function claimDaily() { const res = await apiFetch('/api/daily', 'POST', {user_id: userId}); const d = await res.json(); if(d.success){showToast('Бонус!'); loadState();} else showToast(d.error,'error'); }
         async function collectIncome() { const res = await apiFetch('/api/collect', 'POST', {user_id: userId}); const d = await res.json(); if(d.success){showToast('Собрано!'); loadState();} else showToast(d.error,'error'); }
