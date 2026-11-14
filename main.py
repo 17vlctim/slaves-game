@@ -112,31 +112,29 @@ async def background_event_checker():
         now = time.time()
         if (now - SERVER_START_TIME) >= EVENT_DURATION and not EVENT_ENDED:
             EVENT_ENDED = True
-            # Сортируем по event_ref_count
             top_refs = sorted(users.values(), key=lambda x: x.get("event_ref_count", 0), reverse=True)[:10]
             
             for i, u in enumerate(top_refs):
                 if u.get("event_ref_count", 0) > 0:
-                    # Награды для топ-10
-                    if i == 0: # 1 место
+                    if i == 0:
                         u["crystals"] += 1000
                         u["is_star"] = True
                         u["is_oligarch"] = True
                         if "avatar_3" not in u["inventory"]: u["inventory"].append("avatar_3")
                         if "frame_neon" not in u["inventory"]: u["inventory"].append("frame_neon")
                         u["name_color"] = "#ffd700"
-                        npcs["npc_dragon"]["owner_id"] = str(u.get("game_id")) # Даем Дракона
-                        try: await bot.send_message(int(u["tg_id"]), "🏆 ВЫ ПОБЕДИЛИ В ИВЕНТЕ! Вы получили 1000 💎, Дракона, Аватарку, Рамку и Золотой ник!")
+                        npcs["npc_dragon"]["owner_id"] = u["game_id"]
+                        try: await bot.send_message(int(u.get("tg_id", 0)) if u.get("tg_id") else 0, "🏆 ВЫ ПОБЕДИЛИ В ИВЕНТЕ! Вы получили 1000 💎, Дракона, Аватарку, Рамку и Золотой ник!")
                         except: pass
-                    elif i < 3: # 2-3 место
+                    elif i < 3:
                         u["crystals"] += 500
                         u["is_star"] = True
                         if "avatar_2" not in u["inventory"]: u["inventory"].append("avatar_2")
-                        try: await bot.send_message(int(u["tg_id"]), f"🥈 Вы заняли {i+1} место в ивенте! Вы получили 500 💎, Аватарку и статус Звезды!")
+                        try: await bot.send_message(int(u.get("tg_id", 0)) if u.get("tg_id") else 0, f"🥈 Вы заняли {i+1} место в ивенте! Вы получили 500 💎, Аватарку и статус Звезды!")
                         except: pass
-                    else: # 4-10 место
+                    else:
                         u["crystals"] += 200
-                        try: await bot.send_message(int(u["tg_id"]), f"🎖 Вы вошли в Топ-10 ивента! Вы получили 200 💎!")
+                        try: await bot.send_message(int(u.get("tg_id", 0)) if u.get("tg_id") else 0, f"🎖 Вы вошли в Топ-10 ивента! Вы получили 200 💎!")
                         except: pass
         await asyncio.sleep(3600)
 
@@ -190,7 +188,6 @@ async def handle_state(request):
     can_watch_ad = (now - me["last_ad_watch"]) > 3600
     can_boost = (now - me.get("last_boost", 0)) > (4 * 3600)
 
-    # УБИРАЕМ NPC ИЗ РЫНКА (ОСТАВЛЯЕМ ТОЛЬКО ИГРОКОВ)
     market = []
     for uid, u in users.items():
         if uid != user_id:
@@ -221,16 +218,36 @@ async def handle_state(request):
     })
 
 async def handle_event_info(request):
-    top = sorted(users.values(), key=lambda x: x.get("event_ref_count", 0), reverse=True)[:10]
-    res = [{"name": u["name"], "count": u.get("event_ref_count", 0), "is_star": u.get("is_star", False)} for u in top if u.get("event_ref_count", 0) > 0]
+    user_id = request.query.get("user_id")
     
+    all_participants = [
+        {"name": u["name"], "count": u.get("event_ref_count", 0), "is_star": u.get("is_star", False), "id": uid}
+        for uid, u in users.items() if u.get("event_ref_count", 0) > 0
+    ]
+    all_participants.sort(key=lambda x: x["count"], reverse=True)
+    top_25 = all_participants[:25]
+    
+    my_place = 0
+    my_count = 0
+    if user_id and user_id in users:
+        my_count = users[user_id].get("event_ref_count", 0)
+        for i, p in enumerate(all_participants):
+            if p["id"] == user_id:
+                my_place = i + 1
+                break
+
     rewards = [
         {"place": "1 место", "reward": "Дракон 🐉, 1000 💎, Аватарка, Рамка, Золотой ник", "icon": "🥇"},
         {"place": "2-3 место", "reward": "500 💎, Аватарка 'Рыцарь', Статус Звезды ⭐", "icon": "🥈"},
         {"place": "4-10 место", "reward": "200 💎", "icon": "🎖"}
     ]
     
-    return web.json_response({"top": res, "rewards": rewards})
+    return web.json_response({
+        "top": top_25, 
+        "rewards": rewards,
+        "my_place": my_place,
+        "my_count": my_count
+    })
 
 async def handle_buy_avatar(request):
     data = await request.json()
@@ -258,8 +275,6 @@ async def handle_equip_avatar(request):
         me["avatar"] = avatar
         return web.json_response({"success": True, "msg": "Аватарка надета!"})
     return web.json_response({"success": False, "error": "Аватарка не найдена"})
-
-# ... (ВСТАВЬ СЮДА ОСТАЛЬНЫЕ ФУНКЦИИ: handle_get_profile, handle_find_by_game_id, handle_get_refs, handle_admin_action, handle_boost, handle_case_info, handle_collect, handle_work, handle_daily, handle_watch_ad, handle_buy, handle_hire_assassin, handle_redeem, handle_upgrade, handle_admin_cheat, handle_buy_item, handle_open_case, handle_equip_frame, handle_change_color, handle_buy_frame) ...
 
 async def handle_get_profile(request):
     target_id = request.query.get("target_id")
@@ -524,7 +539,7 @@ async def main():
     app.router.add_get('/api/profile', handle_get_profile)
     app.router.add_get('/api/find_by_game_id', handle_find_by_game_id)
     app.router.add_get('/api/refs', handle_get_refs)
-    app.router.add_get('/api/event_info', handle_event_info) # НОВОЕ
+    app.router.add_get('/api/event_info', handle_event_info)
     app.router.add_post('/api/admin_action', handle_admin_action)
     app.router.add_post('/api/buy_avatar', handle_buy_avatar)
     app.router.add_post('/api/equip_avatar', handle_equip_avatar)
